@@ -6,6 +6,7 @@ import com.menmasystems.menmudiscordbot.errorhandlers.MusicQueueEmptyException;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.player.event.AudioEventAdapter;
 import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
+import com.sedmelluq.discord.lavaplayer.tools.FriendlyException.Severity;
 import com.sedmelluq.discord.lavaplayer.tools.Units;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
@@ -33,12 +34,12 @@ import java.util.concurrent.TimeUnit;
 
 public class MenmuTrackScheduler extends AudioEventAdapter {
 
+    public static final int MAX_TRACK_START_RETRIES = 5;
     private static final Logger logger = LoggerFactory.getLogger(MenmuTrackScheduler.class);
 
     private Guild guild;
     private final AudioPlayer audioPlayer;
     public BlockingQueue<AudioTrack> queue;
-    private int trackStartFailedRetries = 0;
 
     public MenmuTrackScheduler(Guild guild, AudioPlayer audioPlayer) {
         this.setGuild(guild);
@@ -122,8 +123,8 @@ public class MenmuTrackScheduler extends AudioEventAdapter {
 
     @Override
     public void onTrackStart(AudioPlayer player, AudioTrack track) {
-        trackStartFailedRetries = 0;
         MenmuTrackData trackData = track.getUserData(MenmuTrackData.class);
+        trackData.startRetries = 0;
         if(!trackData.onRepeat && Menmu.getGuildData(guild.getId()).getQueueOnRepeat() == null) {
             if(track.getSourceManager().getSourceName().equals("youtube") && !trackData.ytInfoFetched) {
                 trackData.url = "https://www.youtube.com/watch?v=" + track.getIdentifier();
@@ -165,18 +166,16 @@ public class MenmuTrackScheduler extends AudioEventAdapter {
 
     @Override
     public void onTrackEnd(AudioPlayer player, AudioTrack track, AudioTrackEndReason endReason) {
-        if(endReason == AudioTrackEndReason.LOAD_FAILED && trackStartFailedRetries < 5) {
+        MenmuTrackData trackData = track.getUserData(MenmuTrackData.class);
+        if(endReason == AudioTrackEndReason.LOAD_FAILED && trackData.startRetries < MAX_TRACK_START_RETRIES) {
             player.startTrack(track.makeClone(), false);
-            trackStartFailedRetries++;
+            trackData.startRetries++;
         } else if(endReason.mayStartNext) {
-            trackStartFailedRetries = 0;
+            trackData.startRetries = 0;
             GuildData guildData = Menmu.getGuildData(guild.getId());
             if(guildData.isRepeatCurrentTrack()) {
-                AudioTrack clone = track.makeClone();
-                MenmuTrackData trackData = track.getUserData(MenmuTrackData.class);
                 trackData.onRepeat = true;
-                clone.setUserData(trackData);
-                player.startTrack(clone, false);
+                player.startTrack(track.makeClone(), false);
             } else {
                 AudioTrack next = queue.poll();
                 if(next == null && guildData.getQueueOnRepeat() != null) {
@@ -193,11 +192,10 @@ public class MenmuTrackScheduler extends AudioEventAdapter {
 
     @Override
     public void onTrackException(AudioPlayer player, AudioTrack track, FriendlyException exception) {
-        if(exception.severity == FriendlyException.Severity.COMMON || exception.severity == FriendlyException.Severity.SUSPICIOUS) {
+        if(track.getUserData(MenmuTrackData.class).startRetries < MAX_TRACK_START_RETRIES) return;
+        if((exception.severity == Severity.COMMON || exception.severity == Severity.SUSPICIOUS)) {
             TextChannel channel = Menmu.getGuildData(getGuild().getId()).getBoundTextChannel();
             String message = ":no_entry_sign: Eh... I'm sorry but I was unable to play `" + track.getInfo().title + "`. ";
-            if(trackStartFailedRetries < 5)
-                message += "Retrying...";
             Menmu.sendErrorMessage(channel, message, exception.getMessage());
         } else {
             logger.error("There was an error trying to play track " + track.getInfo().title, exception);

@@ -10,6 +10,7 @@ import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
 import com.sedmelluq.discord.lavaplayer.player.AudioLoadResultHandler;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
+import com.sedmelluq.discord.lavaplayer.tools.FriendlyException.Severity;
 import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import discord4j.core.event.domain.message.MessageCreateEvent;
@@ -45,7 +46,7 @@ public class PlayCommandHandler implements CommandHandler {
         if(params.size() >= 2) {
             if(event.getMember().isEmpty()) return Mono.error(new CommandExecutionException("play", "Member is empty"));
 
-            String loadItem;
+            final String loadItem;
             MenmuTrackData trackData = new MenmuTrackData(event.getMember().get());
 
             if(params.get(1).startsWith("http://") || params.get(1).startsWith("https://")) {
@@ -83,6 +84,8 @@ public class PlayCommandHandler implements CommandHandler {
             // Now we can attempt to load the track or playlist.
             final Message enqueuingMessage = channel.createMessage(":cd: Enqueuing...").block();
             Menmu.getPlayerManager().loadItem(loadItem, new AudioLoadResultHandler() {
+                int trackLoadRetries = 0;
+
                 @Override
                 public void trackLoaded(AudioTrack track) {
                     trackData.dateTimeRequested = Instant.now();
@@ -134,9 +137,14 @@ public class PlayCommandHandler implements CommandHandler {
 
                 @Override
                 public void loadFailed(FriendlyException exception) {
+                    if(trackLoadRetries < MenmuTrackScheduler.MAX_TRACK_START_RETRIES) {
+                        Menmu.getPlayerManager().loadItem(loadItem, this);
+                        trackLoadRetries++;
+                        return;
+                    }
                     if(enqueuingMessage != null) enqueuingMessage.delete().subscribe();
-                    if(exception.severity == FriendlyException.Severity.COMMON || exception.severity == FriendlyException.Severity.SUSPICIOUS) {
-                        String message = ":no_entry_sign: Eh... I'm sorry, but I was unable to load that track. Please try again.";
+                    if(exception.severity == Severity.COMMON || exception.severity == Severity.SUSPICIOUS) {
+                        String message = ":no_entry_sign: Eh... I'm sorry, but I was unable to load that track.";
                         Menmu.sendErrorMessage(channel, message, exception.getMessage());
                     } else {
                         logger.error("There was an error trying to load that track.", exception);
