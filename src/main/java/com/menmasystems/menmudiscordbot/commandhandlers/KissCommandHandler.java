@@ -29,7 +29,7 @@ public class KissCommandHandler implements CommandHandler {
             return Mono.error(new CommandExecutionException("kiss", "Member is empty."));
 
         try {
-            List<User> users = event.getMessage().getUserMentions().collectSortedList().block();
+            List<User> users = event.getMessage().getUserMentions().collectList().block();
             if(users == null) return Mono.error(new CommandExecutionException("kiss", "users is null."));
             if(users.size() == 0 || users.size() > 5) {
                 Menmu.sendErrorMessage(channel, ":no_entry_sign: You need to mention up to a maximum of 5 people. " +

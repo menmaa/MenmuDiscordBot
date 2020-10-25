@@ -43,7 +43,7 @@ import java.util.concurrent.ScheduledFuture;
 
 public class Menmu {
 
-    public static final String VERSION_NUMBER = "0.1 (Beta)";
+    public static final String VERSION_NUMBER = "0.1.1 (Beta)";
     public static final String INVITE_URL = "https://menmasystems.com/menmu/invite";
     public static final String RES_URL = "https://menmasystems.com/menmu/resources/";
     public static final Color DEFAULT_EMBED_COLOR = Color.of(0x47FFFF);
