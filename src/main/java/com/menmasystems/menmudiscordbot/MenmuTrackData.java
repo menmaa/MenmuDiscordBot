@@ -20,7 +20,6 @@ public class MenmuTrackData {
     public String channelName = "Unknown Channel";
     public Instant dateTimeRequested;
     public boolean ytInfoFetched = false;
-    public int startRetries = 0;
 
     public MenmuTrackData(Member requestedBy) {
         this.requestedBy = requestedBy;

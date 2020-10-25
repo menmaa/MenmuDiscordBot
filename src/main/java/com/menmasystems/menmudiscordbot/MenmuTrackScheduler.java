@@ -6,7 +6,6 @@ import com.menmasystems.menmudiscordbot.errorhandlers.MusicQueueEmptyException;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.player.event.AudioEventAdapter;
 import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
-import com.sedmelluq.discord.lavaplayer.tools.FriendlyException.Severity;
 import com.sedmelluq.discord.lavaplayer.tools.Units;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
@@ -124,7 +123,6 @@ public class MenmuTrackScheduler extends AudioEventAdapter {
     @Override
     public void onTrackStart(AudioPlayer player, AudioTrack track) {
         MenmuTrackData trackData = track.getUserData(MenmuTrackData.class);
-        trackData.startRetries = 0;
         if(!trackData.onRepeat && Menmu.getGuildData(guild.getId()).getQueueOnRepeat() == null) {
             if(track.getSourceManager().getSourceName().equals("youtube") && !trackData.ytInfoFetched) {
                 trackData.url = "https://www.youtube.com/watch?v=" + track.getIdentifier();
@@ -167,11 +165,7 @@ public class MenmuTrackScheduler extends AudioEventAdapter {
     @Override
     public void onTrackEnd(AudioPlayer player, AudioTrack track, AudioTrackEndReason endReason) {
         MenmuTrackData trackData = track.getUserData(MenmuTrackData.class);
-        if(endReason == AudioTrackEndReason.LOAD_FAILED && trackData.startRetries < MAX_TRACK_START_RETRIES) {
-            player.startTrack(track.makeClone(), false);
-            trackData.startRetries++;
-        } else if(endReason.mayStartNext) {
-            trackData.startRetries = 0;
+        if(endReason.mayStartNext) {
             GuildData guildData = Menmu.getGuildData(guild.getId());
             if(guildData.isRepeatCurrentTrack()) {
                 trackData.onRepeat = true;
@@ -192,14 +186,9 @@ public class MenmuTrackScheduler extends AudioEventAdapter {
 
     @Override
     public void onTrackException(AudioPlayer player, AudioTrack track, FriendlyException exception) {
-        if(track.getUserData(MenmuTrackData.class).startRetries < MAX_TRACK_START_RETRIES) return;
-        if((exception.severity == Severity.COMMON || exception.severity == Severity.SUSPICIOUS)) {
-            TextChannel channel = Menmu.getGuildData(getGuild().getId()).getBoundTextChannel();
-            String message = ":no_entry_sign: Eh... I'm sorry but I was unable to play `" + track.getInfo().title + "`. ";
-            Menmu.sendErrorMessage(channel, message, exception.getMessage());
-        } else {
-            logger.error("There was an error trying to play track " + track.getInfo().title, exception);
-        }
+        TextChannel channel = Menmu.getGuildData(getGuild().getId()).getBoundTextChannel();
+        String message = ":no_entry_sign: Eh... I'm sorry but I was unable to play `" + track.getInfo().title + "`. Skipping ahead.";
+        Menmu.sendErrorMessage(channel, message, exception.getMessage());
     }
 
     @Override
