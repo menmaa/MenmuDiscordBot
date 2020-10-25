@@ -13,7 +13,7 @@ allprojects {
 }
 
 dependencies {
-    implementation 'com.discord4j:discord4j-core:3.1.1'
+    implementation files('libs/Discord4J.jar')
     implementation 'com.github.menmaa:lavaplayer:a4b8b48ed5'
     implementation 'com.google.code.gson:gson:2.8.6'
     implementation 'ch.qos.logback:logback-classic:1.2.3'
