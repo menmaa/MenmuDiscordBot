@@ -45,7 +45,7 @@ public class PlayCommandHandler implements CommandHandler {
         if(params.size() >= 2) {
             if(event.getMember().isEmpty()) return Mono.error(new CommandExecutionException("play", "Member is empty"));
 
-            String loadItem;
+            final String loadItem;
             MenmuTrackData trackData = new MenmuTrackData(event.getMember().get());
 
             if(params.get(1).startsWith("http://") || params.get(1).startsWith("https://")) {
@@ -135,12 +135,8 @@ public class PlayCommandHandler implements CommandHandler {
                 @Override
                 public void loadFailed(FriendlyException exception) {
                     if(enqueuingMessage != null) enqueuingMessage.delete().subscribe();
-                    if(exception.severity == FriendlyException.Severity.COMMON || exception.severity == FriendlyException.Severity.SUSPICIOUS) {
-                        String message = ":no_entry_sign: Eh... I'm sorry, but I was unable to load that track. Please try again.";
-                        Menmu.sendErrorMessage(channel, message, exception.getMessage());
-                    } else {
-                        logger.error("There was an error trying to load that track.", exception);
-                    }
+                    String message = ":no_entry_sign: Eh... I'm sorry, but I was unable to load that track. Please try again.";
+                    Menmu.sendErrorMessage(channel, message, exception.getMessage());
                 }
             });
         } else {
