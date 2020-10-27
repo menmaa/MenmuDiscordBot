@@ -14,8 +14,6 @@ import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.rest.util.Color;
 import discord4j.rest.util.Image;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 import java.util.LinkedList;
@@ -33,9 +31,6 @@ import java.util.concurrent.TimeUnit;
  */
 
 public class MenmuTrackScheduler extends AudioEventAdapter {
-
-    public static final int MAX_TRACK_START_RETRIES = 5;
-    private static final Logger logger = LoggerFactory.getLogger(MenmuTrackScheduler.class);
 
     private Guild guild;
     private final AudioPlayer audioPlayer;
