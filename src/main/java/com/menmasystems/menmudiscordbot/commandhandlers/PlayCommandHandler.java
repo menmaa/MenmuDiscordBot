@@ -16,8 +16,6 @@ import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.MessageChannel;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
@@ -32,8 +30,6 @@ import java.util.List;
  */
 
 public class PlayCommandHandler implements CommandHandler {
-
-    private static final Logger logger = LoggerFactory.getLogger(PlayCommandHandler.class);
 
     @Override
     public Mono<Void> handle(MessageCreateEvent event, MessageChannel channel, List<String> params) {
