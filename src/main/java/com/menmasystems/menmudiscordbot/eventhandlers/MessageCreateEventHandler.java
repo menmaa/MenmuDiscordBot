@@ -32,7 +32,7 @@ public class MessageCreateEventHandler implements Consumer<MessageCreateEvent> {
                 .filter(cmdPrefix -> msg.startsWith(cmdPrefix + "!"))
                 .map(cmdPrefix -> Arrays.asList(msg.substring(cmdPrefix.length() + 1).split(" ")))
                 .flatMap(params -> messageCreateEvent.getMessage().getChannel()
-                        .flatMap(channel -> Menmu.getCommandHandler(params.get(0))
+                        .flatMap(channel -> Menmu.getCommandHandler(params.get(0).toLowerCase())
                                 .doOnError(UnknownCommandException.class, unused -> {
                                     String message = ":no_entry_sign: I'm sorry, I don't seem to be able to recognize this command.";
                                     Menmu.sendErrorMessage(channel, message, null);
