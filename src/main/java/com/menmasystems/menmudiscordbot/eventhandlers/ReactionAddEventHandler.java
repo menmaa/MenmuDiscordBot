@@ -107,7 +107,7 @@ public class ReactionAddEventHandler implements Consumer<ReactionAddEvent> {
                     }
                     spec.setDescription(sb.toString());
 
-                    int trackListSize = trackList.size();// - ((np != null) ? 1 : 0);
+                    int trackListSize = trackList.size() - ((np != null) ? 1 : 0);
                     long totalLength = 0;
                     for(AudioTrack track : trackList) {
                         long length = track.getInfo().length;

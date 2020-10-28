@@ -1,5 +1,6 @@
 /out/
 /.gradle/
 /.idea/
+/META-INF/
 /config.json
 /menmu.log

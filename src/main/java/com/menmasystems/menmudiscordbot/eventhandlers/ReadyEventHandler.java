@@ -28,9 +28,6 @@ public class ReadyEventHandler implements Consumer<ReadyEvent> {
         if(Menmu.presenceTask == null) {
             Menmu.presenceTask = Menmu.getGpScheduledExecutor().scheduleAtFixedRate(() -> {
                 try {
-                    //Long guilds = readyEvent.getClient().getGuilds().count().block();
-                    //if(guilds == null) guilds = 0L;
-
                     String activityMsg = "v" + Menmu.VERSION_NUMBER + " | m!help";
                     readyEvent.getClient().updatePresence(Presence.online(Activity.playing(activityMsg))).block();
                     Menmu.menma = readyEvent.getClient().getUserById(Snowflake.of(303676987975663616L)).block();
