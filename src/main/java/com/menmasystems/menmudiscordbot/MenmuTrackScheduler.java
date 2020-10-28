@@ -9,12 +9,11 @@ import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
 import com.sedmelluq.discord.lavaplayer.tools.Units;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
+import com.sedmelluq.discord.lavaplayer.track.AudioTrackState;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.rest.util.Color;
 import discord4j.rest.util.Image;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 import java.util.LinkedList;
@@ -33,9 +32,6 @@ import java.util.concurrent.TimeUnit;
 
 public class MenmuTrackScheduler extends AudioEventAdapter {
 
-    public static final int MAX_TRACK_START_RETRIES = 5;
-    private static final Logger logger = LoggerFactory.getLogger(MenmuTrackScheduler.class);
-
     private Guild guild;
     private final AudioPlayer audioPlayer;
     public BlockingQueue<AudioTrack> queue;
@@ -51,8 +47,6 @@ public class MenmuTrackScheduler extends AudioEventAdapter {
             AudioTrack next = queue.poll();
             GuildData guildData = Menmu.getGuildData(guild.getId());
             if(next == null && guildData.getQueueOnRepeat() != null) {
-                Menmu.sendSuccessMessage(guildData.getBoundTextChannel(), ":information_source: Repeating queue...");
-
                 List<AudioTrack> repeatingQueue = Menmu.getGuildData(guild.getId()).getQueueOnRepeat();
                 for(AudioTrack track : repeatingQueue) {
                     queue.offer(track.makeClone());
@@ -209,6 +203,7 @@ public class MenmuTrackScheduler extends AudioEventAdapter {
         AudioTrack removed = audioTracks.remove(position - 1);
         queue.clear();
         for(AudioTrack track : audioTracks) {
+            if(track.getState() != AudioTrackState.INACTIVE) continue;
             queue.offer(track);
         }
         if(guildData.getQueueOnRepeat() != null) {
