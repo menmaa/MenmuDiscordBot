@@ -16,6 +16,7 @@ import java.util.function.Consumer;
  */
 
 public class VoiceStateUpdateEventHandler implements Consumer<VoiceStateUpdateEvent> {
+
     @Override
     public void accept(VoiceStateUpdateEvent voiceStateUpdateEvent) {
         VoiceState current = voiceStateUpdateEvent.getCurrent();
