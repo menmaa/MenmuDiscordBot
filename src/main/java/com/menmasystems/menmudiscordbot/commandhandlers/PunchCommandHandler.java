@@ -29,8 +29,7 @@ public class PunchCommandHandler implements CommandHandler {
             return Mono.error(new CommandExecutionException("punch", "Member is empty."));
 
         try {
-            List<User> users = event.getMessage().getUserMentions().collectList().block();
-            if(users == null) return Mono.error(new CommandExecutionException("punch", "users is null."));
+            List<User> users = event.getMessage().getUserMentions();
             if(users.size() == 0 || users.size() > 5) {
                 Menmu.sendErrorMessage(channel, ":no_entry_sign: You need to mention up to a maximum of 5 people." +
                         " Check command `help punch` for usage information.", null);
