@@ -7,6 +7,7 @@ import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.MessageChannel;
+import discord4j.core.spec.EmbedCreateSpec;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -29,8 +30,7 @@ public class KissCommandHandler implements CommandHandler {
             return Mono.error(new CommandExecutionException("kiss", "Member is empty."));
 
         try {
-            List<User> users = event.getMessage().getUserMentions().collectList().block();
-            if(users == null) return Mono.error(new CommandExecutionException("kiss", "users is null."));
+            List<User> users = event.getMessage().getUserMentions();
             if(users.size() == 0 || users.size() > 5) {
                 Menmu.sendErrorMessage(channel, ":no_entry_sign: You need to mention up to a maximum of 5 people. " +
                         "Check command `help kiss` for usage information.", null);
@@ -53,7 +53,7 @@ public class KissCommandHandler implements CommandHandler {
                 embedCreateSpec.setAuthor(sb.toString(), null, author.getAvatarUrl());
                 embedCreateSpec.setImage(String.format("%skiss%d.gif", Menmu.RES_URL, Menmu.rng(5)));
                 embedCreateSpec.setColor(Menmu.DEFAULT_EMBED_COLOR);
-            }).block();
+            });
         } catch (RuntimeException e) {
             return Mono.error(e);
         }
