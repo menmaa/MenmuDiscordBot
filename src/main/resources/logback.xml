@@ -13,6 +13,9 @@
         </encoder>
     </appender>
 
+    <logger name="discord4j.voice.LocalVoiceReceiveTask" level="OFF"/>
+    <logger name="discord4j.voice.PacketTransformer" level="OFF"/>
+
     <root level="info">
         <appender-ref ref="STDOUT" />
         <appender-ref ref="FILE" />
