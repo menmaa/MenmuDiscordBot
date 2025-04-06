@@ -12,4 +12,5 @@ public class Configuration {
     public String botToken;
     public String cmdPrefix;
     public String youtubeApiKey;
+    public String ytOAuth2RefreshToken;
 }

@@ -9,6 +9,7 @@ import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers;
 import dev.lavalink.youtube.YoutubeAudioSourceManager;
+import dev.lavalink.youtube.clients.*;
 import discord4j.common.util.Snowflake;
 import discord4j.core.DiscordClient;
 import discord4j.core.GatewayDiscordClient;
@@ -73,7 +74,9 @@ public class Menmu {
 
         youtubeSearch = new YoutubeSearch();
         playerManager = new DefaultAudioPlayerManager();
-        playerManager.registerSourceManager(new YoutubeAudioSourceManager());
+        YoutubeAudioSourceManager ytAudioSourceManager = new YoutubeAudioSourceManager(new Music(), new Web(), new WebEmbedded(), new Tv(), new TvHtml5Embedded());
+        ytAudioSourceManager.useOauth2(getConfig().ytOAuth2RefreshToken, false);
+        playerManager.registerSourceManager(ytAudioSourceManager);
         AudioSourceManagers.registerRemoteSources(getPlayerManager(), com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.class);
 
         discordGateway = Objects.requireNonNull(DiscordClient.create(getConfig().botToken).login().block());
