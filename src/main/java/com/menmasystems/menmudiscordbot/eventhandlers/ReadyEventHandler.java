@@ -4,6 +4,8 @@ import com.menmasystems.menmudiscordbot.Menmu;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.object.presence.Activity;
+import discord4j.core.object.presence.ClientActivity;
+import discord4j.core.object.presence.ClientPresence;
 import discord4j.core.object.presence.Presence;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +31,7 @@ public class ReadyEventHandler implements Consumer<ReadyEvent> {
             Menmu.presenceTask = Menmu.getGpScheduledExecutor().scheduleAtFixedRate(() -> {
                 try {
                     String activityMsg = "v" + Menmu.VERSION_NUMBER + " | m!help";
-                    readyEvent.getClient().updatePresence(Presence.online(Activity.playing(activityMsg))).block();
+                    readyEvent.getClient().updatePresence(ClientPresence.online(ClientActivity.playing(activityMsg))).block();
                     Menmu.menma = readyEvent.getClient().getUserById(Snowflake.of(303676987975663616L)).block();
                 } catch (RuntimeException e) {
                     logger.error("Runtime exception occured when trying to execute presence task.", e);
