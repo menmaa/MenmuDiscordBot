@@ -4,12 +4,12 @@ import com.menmasystems.menmudiscordbot.GuildData;
 import com.menmasystems.menmudiscordbot.Menmu;
 import com.menmasystems.menmudiscordbot.errorhandlers.InvalidQueuePositionException;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
-import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.object.entity.User;
-import discord4j.core.object.entity.channel.MessageChannel;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.object.command.ApplicationCommandInteractionOption;
+import discord4j.core.object.command.ApplicationCommandInteractionOptionValue;
+import discord4j.core.spec.EmbedCreateSpec;
+import discord4j.core.spec.InteractionApplicationCommandCallbackSpec;
 import reactor.core.publisher.Mono;
-
-import java.util.List;
 
 /**
  * RemoveCommandHandler.java
@@ -21,39 +21,48 @@ import java.util.List;
 
 public class RemoveCommandHandler implements CommandHandler {
     @Override
-    public Mono<Void> handle(MessageCreateEvent event, MessageChannel channel, List<String> params) {
+    public Mono<Void> handle(ChatInputInteractionEvent event) {
         try {
-            int position = Integer.parseInt(params.get(1));
+            @SuppressWarnings("OptionalGetWithoutIsPresent")
+            long position = event.getOption("position")
+                    .flatMap(ApplicationCommandInteractionOption::getValue)
+                    .map(ApplicationCommandInteractionOptionValue::asLong)
+                    .get();
 
-            return Mono.justOrEmpty(event.getGuildId())
+            if(position > Integer.MAX_VALUE || position < Integer.MIN_VALUE) {
+                throw new NumberFormatException();
+            }
+
+            return Mono.justOrEmpty(event.getInteraction().getGuildId())
                     .map(Menmu::getGuildData)
                     .map(GuildData::getTrackScheduler)
-                    .flatMap(trackScheduler -> trackScheduler.removeQueue(position))
+                    .flatMap(trackScheduler -> trackScheduler.removeQueue((int) position))
                     .doOnSuccess(removed -> {
                         String msg = ":no_entry: Track `%s` has been removed from the music queue.";
-                        Menmu.sendErrorMessage(channel, String.format(msg, removed.getInfo().title), null);
+                        Menmu.sendErrorInteractionReply(event, String.format(msg, removed.getInfo().title), null).subscribe();
                     })
                     .onErrorResume(error -> error instanceof InvalidQueuePositionException, error -> {
-                        Menmu.sendErrorMessage(channel, ":no_entry_sign: Track does not exist in the music queue.", null);
+                        Menmu.sendErrorInteractionReply(event, ":no_entry_sign: Track does not exist in the music queue.", null).subscribe();
                         return Mono.empty();
                     }).then();
         } catch (NumberFormatException | IndexOutOfBoundsException e) {
-            Menmu.sendErrorMessage(channel, ":no_entry_sign: Invalid position number or no number provided. Correct Usage: `remove [position in queue]`. e.g.: `remove 3`", null);
+            Menmu.sendErrorInteractionReply(event, ":no_entry_sign: Invalid position number or no number provided. Correct Usage: `remove [position in queue]`. e.g.: `remove 3`", null).subscribe();
         }
         return Mono.empty();
     }
 
     @Override
-    public void helpHandler(MessageChannel channel, User self) {
-        channel.createEmbed(embedCreateSpec -> {
-            final String command = Menmu.getConfig().cmdPrefix + "!remove";
-
-            embedCreateSpec.setColor(Menmu.DEFAULT_EMBED_COLOR);
-            embedCreateSpec.setAuthor(self.getUsername() + "'s Helpdesk", Menmu.INVITE_URL, self.getAvatarUrl());
-            embedCreateSpec.setTitle("Command: `remove`");
-            embedCreateSpec.setDescription("Removes the song in the inserted position in the guild music queue, from it.");
-            embedCreateSpec.addField("Usage", "`"+command+" [position]`", true);
-            embedCreateSpec.addField("Example", "`"+command+" 3`", true);
-        }).block();
+    public void helpHandler(ChatInputInteractionEvent event) {
+        event.getClient().getSelf()
+                .map(self -> EmbedCreateSpec.builder()
+                        .color(Menmu.DEFAULT_EMBED_COLOR)
+                        .author(self.getUsername() + "'s Helpdesk", Menmu.INVITE_URL, self.getAvatarUrl())
+                        .title("Command: `remove`")
+                        .description("Removes the entry in the specified position from the guild music queue.")
+                        .addField("Usage", "`/remove [position]`", true)
+                        .addField("Example", "`/remove 3", true)
+                        .build())
+                .flatMap(embedSpec -> event.reply(InteractionApplicationCommandCallbackSpec.builder().addEmbed(embedSpec).build()))
+                .subscribe();
     }
 }

@@ -11,7 +11,7 @@ import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackState;
 import discord4j.core.object.entity.Guild;
-import discord4j.core.object.entity.channel.TextChannel;
+import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.rest.util.Color;
 import discord4j.rest.util.Image;
 import reactor.core.publisher.Mono;
@@ -128,7 +128,7 @@ public class MenmuTrackScheduler extends AudioEventAdapter {
                 }
             }
 
-            TextChannel channel = Menmu.getGuildData(getGuild().getId()).getBoundTextChannel();
+            MessageChannel channel = Menmu.getGuildData(getGuild().getId()).getBoundMessageChannel();
 
             long length = track.getInfo().length;
             String duration;
@@ -180,7 +180,7 @@ public class MenmuTrackScheduler extends AudioEventAdapter {
 
     @Override
     public void onTrackException(AudioPlayer player, AudioTrack track, FriendlyException exception) {
-        TextChannel channel = Menmu.getGuildData(getGuild().getId()).getBoundTextChannel();
+        MessageChannel channel = Menmu.getGuildData(getGuild().getId()).getBoundMessageChannel();
         String message = ":no_entry_sign: Eh... I'm sorry but I was unable to play `" + track.getInfo().title + "`. Skipping ahead.";
         Menmu.sendErrorMessage(channel, message, exception.getMessage());
     }

@@ -3,12 +3,10 @@ package com.menmasystems.menmudiscordbot.commandhandlers;
 import com.menmasystems.menmudiscordbot.GuildData;
 import com.menmasystems.menmudiscordbot.Menmu;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
-import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.object.entity.User;
-import discord4j.core.object.entity.channel.MessageChannel;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.spec.EmbedCreateSpec;
+import discord4j.core.spec.InteractionApplicationCommandCallbackSpec;
 import reactor.core.publisher.Mono;
-
-import java.util.List;
 
 /**
  * PauseCommandHandler.java
@@ -20,31 +18,32 @@ import java.util.List;
 
 public class PauseCommandHandler implements CommandHandler {
     @Override
-    public Mono<Void> handle(MessageCreateEvent event, MessageChannel channel, List<String> params) {
-        return Mono.justOrEmpty(event.getGuildId())
+    public Mono<Void> handle(ChatInputInteractionEvent event) {
+        return Mono.justOrEmpty(event.getInteraction().getGuildId())
                 .map(Menmu::getGuildData)
                 .map(GuildData::getAudioPlayer)
                 .doOnNext(audioPlayer -> {
                     if(!audioPlayer.isPaused()) {
                         audioPlayer.setPaused(true);
-                        Menmu.sendErrorMessage(channel, ":play_pause: Player paused.", null);
+                        Menmu.sendErrorInteractionReply(event, ":play_pause: Player paused.", null).subscribe();
                     } else {
                         audioPlayer.setPaused(false);
-                        Menmu.sendSuccessMessage(channel, ":play_pause: Resuming player...");
+                        Menmu.sendSuccessInteractionReply(event, ":play_pause: Resuming player...").subscribe();
                     }
                 }).then();
     }
 
     @Override
-    public void helpHandler(MessageChannel channel, User self) {
-        channel.createEmbed(embedCreateSpec -> {
-            final String command = Menmu.getConfig().cmdPrefix + "!pause";
-
-            embedCreateSpec.setColor(Menmu.DEFAULT_EMBED_COLOR);
-            embedCreateSpec.setAuthor(self.getUsername() + "'s Helpdesk", Menmu.INVITE_URL, self.getAvatarUrl());
-            embedCreateSpec.setTitle("Command: `pause`");
-            embedCreateSpec.setDescription("Pauses the music player.");
-            embedCreateSpec.addField("Usage", "`"+command+"`", true);
-        }).block();
+    public void helpHandler(ChatInputInteractionEvent event) {
+        event.getClient().getSelf()
+                .map(self -> EmbedCreateSpec.builder()
+                        .color(Menmu.DEFAULT_EMBED_COLOR)
+                        .author(self.getUsername() + "'s Helpdesk", Menmu.INVITE_URL, self.getAvatarUrl())
+                        .title("Command: `pause`")
+                        .description("Pauses the music player.")
+                        .addField("Usage", "`/pause`", true)
+                        .build())
+                .flatMap(embedSpec -> event.reply(InteractionApplicationCommandCallbackSpec.builder().addEmbed(embedSpec).build()))
+                .subscribe();
     }
 }

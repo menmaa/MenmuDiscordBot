@@ -4,13 +4,11 @@ import com.menmasystems.menmudiscordbot.GuildData;
 import com.menmasystems.menmudiscordbot.Menmu;
 import com.menmasystems.menmudiscordbot.MenmuTrackScheduler;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
-import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.object.entity.User;
-import discord4j.core.object.entity.channel.MessageChannel;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.spec.EmbedCreateSpec;
+import discord4j.core.spec.InteractionApplicationCommandCallbackSpec;
 import discord4j.rest.util.Color;
 import reactor.core.publisher.Mono;
-
-import java.util.List;
 
 /**
  * ClearCommandHandler.java
@@ -22,27 +20,34 @@ import java.util.List;
 
 public class ClearCommandHandler implements CommandHandler {
     @Override
-    public Mono<Void> handle(MessageCreateEvent event, MessageChannel channel, List<String> params) {
-        return Mono.justOrEmpty(event.getGuildId())
+    public Mono<Void> handle(ChatInputInteractionEvent event) {
+        return Mono.justOrEmpty(event.getInteraction().getGuildId())
                 .map(Menmu::getGuildData)
                 .map(GuildData::getTrackScheduler)
                 .map(MenmuTrackScheduler::purgeQueue)
-                .flatMap(queue -> channel.createEmbed(spec -> {
-                    spec.setColor(Color.GREEN);
-                    spec.setDescription(":white_check_mark: Music queue purged.");
-                })).then();
+                .flatMap(queue -> {
+                    EmbedCreateSpec.Builder embedBuilder = EmbedCreateSpec.builder();
+                    embedBuilder.color(Color.GREEN);
+                    embedBuilder.description(":white_check_mark: Music queue purged.");
+
+                    InteractionApplicationCommandCallbackSpec spec = InteractionApplicationCommandCallbackSpec.builder()
+                            .addEmbed(embedBuilder.build()).build();
+
+                    return event.reply(spec);
+                });
     }
 
     @Override
-    public void helpHandler(MessageChannel channel, User self) {
-        channel.createEmbed(embedCreateSpec -> {
-            final String command = Menmu.getConfig().cmdPrefix + "!clear";
-
-            embedCreateSpec.setColor(Menmu.DEFAULT_EMBED_COLOR);
-            embedCreateSpec.setAuthor(self.getUsername() + "'s Helpdesk", Menmu.INVITE_URL, self.getAvatarUrl());
-            embedCreateSpec.setTitle("Command: `clear`");
-            embedCreateSpec.setDescription("Clears/purges the guild music queue.");
-            embedCreateSpec.addField("Usage", "`"+command+"`", true);
-        }).block();
+    public void helpHandler(ChatInputInteractionEvent event) {
+        event.getClient().getSelf()
+                .map(self -> EmbedCreateSpec.builder()
+                        .color(Menmu.DEFAULT_EMBED_COLOR)
+                        .author(self.getUsername() + "'s Helpdesk", Menmu.INVITE_URL, self.getAvatarUrl())
+                        .title("Command: `clear`")
+                        .description("Clears/purges the guild music queue.")
+                        .addField("Usage", "`/clear`", true)
+                        .build())
+                .flatMap(embedSpec -> event.reply(InteractionApplicationCommandCallbackSpec.builder().addEmbed(embedSpec).build()))
+                .subscribe();
     }
 }

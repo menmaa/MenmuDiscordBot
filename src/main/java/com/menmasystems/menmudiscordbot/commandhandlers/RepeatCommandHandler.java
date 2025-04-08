@@ -2,12 +2,10 @@ package com.menmasystems.menmudiscordbot.commandhandlers;
 
 import com.menmasystems.menmudiscordbot.Menmu;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
-import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.object.entity.User;
-import discord4j.core.object.entity.channel.MessageChannel;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.spec.EmbedCreateSpec;
+import discord4j.core.spec.InteractionApplicationCommandCallbackSpec;
 import reactor.core.publisher.Mono;
-
-import java.util.List;
 
 /**
  * RepeatCommandHandler.java
@@ -19,31 +17,38 @@ import java.util.List;
 
 public class RepeatCommandHandler implements CommandHandler {
     @Override
-    public Mono<Void> handle(MessageCreateEvent event, MessageChannel channel, List<String> params) {
+    public Mono<Void> handle(ChatInputInteractionEvent event) {
 
-        return Mono.justOrEmpty(event.getGuildId())
+        return Mono.justOrEmpty(event.getInteraction().getGuildId())
                 .map(Menmu::getGuildData)
-                .doOnNext(guildData -> {
+                .map(guildData -> {
+                    InteractionApplicationCommandCallbackSpec.Builder specBuilder =
+                            InteractionApplicationCommandCallbackSpec.builder();
+
                     if(guildData.isRepeatCurrentTrack()) {
                         guildData.setRepeatCurrentTrack(false);
-                        Menmu.sendErrorMessage(channel, ":no_entry: Song repeat disabled.", null);
+                        specBuilder.addEmbed(Menmu.createErrorEmbedSpec(":no_entry: Song repeat disabled.", null));
+
                     } else {
                         guildData.setRepeatCurrentTrack(true);
-                        Menmu.sendSuccessMessage(channel, ":white_check_mark: Song repeat enabled.");
+                        specBuilder.addEmbed(Menmu.createSuccessEmbedSpec(":white_check_mark: Song repeat enabled."));
                     }
-                }).then();
+
+                    return specBuilder.build();
+                }).flatMap(event::reply);
     }
 
     @Override
-    public void helpHandler(MessageChannel channel, User self) {
-        channel.createEmbed(embedCreateSpec -> {
-            final String command = Menmu.getConfig().cmdPrefix + "!repeat";
-
-            embedCreateSpec.setColor(Menmu.DEFAULT_EMBED_COLOR);
-            embedCreateSpec.setAuthor(self.getUsername() + "'s Helpdesk", Menmu.INVITE_URL, self.getAvatarUrl());
-            embedCreateSpec.setTitle("Command: `repeat`");
-            embedCreateSpec.setDescription("Enables/disables current song repeat.");
-            embedCreateSpec.addField("Usage", "`"+command+"`", true);
-        }).block();
+    public void helpHandler(ChatInputInteractionEvent event) {
+        event.getClient().getSelf()
+                .map(self -> EmbedCreateSpec.builder()
+                        .color(Menmu.DEFAULT_EMBED_COLOR)
+                        .author(self.getUsername() + "'s Helpdesk", Menmu.INVITE_URL, self.getAvatarUrl())
+                        .title("Command: `repeat`")
+                        .description("Enables/disables current song repeat.")
+                        .addField("Usage", "`/repeat`", true)
+                        .build())
+                .flatMap(embedSpec -> event.reply(InteractionApplicationCommandCallbackSpec.builder().addEmbed(embedSpec).build()))
+                .subscribe();
     }
 }
