@@ -25,8 +25,7 @@ public class VoiceStateUpdateEventHandler implements Consumer<VoiceStateUpdateEv
             VoiceState old = voiceStateUpdateEvent.getOld().get();
             if(current.getChannelId().isEmpty() && old.getChannelId().isPresent()) {
                 GuildData guildData = Menmu.getGuildData(current.getGuildId());
-                guildData.setVoiceConnection(null);
-                guildData.setBoundTextChannel(null);
+                guildData.setVoiceConnection(null).then(guildData.setBoundMessageChannel(null));
             }
         }
     }
