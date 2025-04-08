@@ -3,13 +3,11 @@ package com.menmasystems.menmudiscordbot.commandhandlers;
 import com.menmasystems.menmudiscordbot.Menmu;
 import com.menmasystems.menmudiscordbot.errorhandlers.CommandExecutionException;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
-import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.object.entity.User;
-import discord4j.core.object.entity.channel.MessageChannel;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.spec.EmbedCreateSpec;
+import discord4j.core.spec.InteractionApplicationCommandCallbackSpec;
 import discord4j.rest.util.Color;
 import reactor.core.publisher.Mono;
-
-import java.util.List;
 
 /**
  * LeaveCommandHandler.java
@@ -21,33 +19,35 @@ import java.util.List;
 
 public class LeaveCommandHandler implements CommandHandler {
     @Override
-    public Mono<Void> handle(MessageCreateEvent event, MessageChannel channel, List<String> params) {
+    public Mono<Void> handle(ChatInputInteractionEvent event) {
 
-        return Mono.justOrEmpty(event.getGuildId())
+        return Mono.justOrEmpty(event.getInteraction().getGuildId())
                 .map(Menmu::getGuildData)
                 .flatMap(guildData -> Mono.justOrEmpty(guildData.getVoiceConnection())
                         .switchIfEmpty(Mono.error(new CommandExecutionException("leave", CommandExecutionException.ErrorType.SELF_VOICE_STATE_NULL)))
                         .flatMap(voiceConnection -> event.getClient().getSelf()
-                        .flatMap(self -> voiceConnection.disconnect().doOnSuccess(unused -> {
-                            guildData.setVoiceConnection(null);
-                            guildData.setBoundTextChannel(null);
-                            channel.createEmbed(spec -> {
-                                spec.setColor(Color.RED);
-                                spec.setDescription(":no_entry: Left voice channels. Thanks for trying out " + self.getUsername() + "-san!");
-                            }).subscribe();
-                        }))));
+                        .flatMap(self -> voiceConnection.disconnect())
+                        .then(guildData.setVoiceConnection(null))
+                        .then(guildData.setBoundMessageChannel(null))
+                        .then(event.getClient().getSelf())
+                        .flatMap(self -> event.getInteraction().getChannel()
+                                .flatMap(channel -> channel.createEmbed(spec -> {
+                                    spec.setColor(Color.RED);
+                                    spec.setDescription(":no_entry: Left voice channels. Thanks for trying out " + self.getUsername() + "-san!");
+                                })).then())));
     }
 
     @Override
-    public void helpHandler(MessageChannel channel, User self) {
-        channel.createEmbed(embedCreateSpec -> {
-            final String command = Menmu.getConfig().cmdPrefix + "!leave";
-
-            embedCreateSpec.setColor(Menmu.DEFAULT_EMBED_COLOR);
-            embedCreateSpec.setAuthor(self.getUsername() + "'s Helpdesk", Menmu.INVITE_URL, self.getAvatarUrl());
-            embedCreateSpec.setTitle("Command: `leave`");
-            embedCreateSpec.setDescription("Disconnects me from voice channels.");
-            embedCreateSpec.addField("Usage", "`"+command+"`", true);
-        }).block();
+    public void helpHandler(ChatInputInteractionEvent event) {
+        event.getClient().getSelf()
+                .map(self -> EmbedCreateSpec.builder()
+                        .color(Menmu.DEFAULT_EMBED_COLOR)
+                        .author(self.getUsername() + "'s Helpdesk", Menmu.INVITE_URL, self.getAvatarUrl())
+                        .title("Command: `leave`")
+                        .description("Disconnects me from voice channels.")
+                        .addField("Usage", "`/leave`", true)
+                        .build())
+                .flatMap(embedSpec -> event.reply(InteractionApplicationCommandCallbackSpec.builder().addEmbed(embedSpec).build()))
+                .subscribe();
     }
 }

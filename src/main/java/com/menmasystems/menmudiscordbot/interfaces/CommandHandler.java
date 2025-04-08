@@ -1,12 +1,10 @@
 package com.menmasystems.menmudiscordbot.interfaces;
 
 import com.menmasystems.menmudiscordbot.Menmu;
-import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.object.entity.User;
-import discord4j.core.object.entity.channel.MessageChannel;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.spec.EmbedCreateSpec;
+import discord4j.core.spec.InteractionApplicationCommandCallbackSpec;
 import reactor.core.publisher.Mono;
-
-import java.util.List;
 
 /**
  * CommandHandler.java
@@ -17,12 +15,16 @@ import java.util.List;
  */
 
 public interface CommandHandler {
-    Mono<Void> handle(MessageCreateEvent event, MessageChannel channel, List<String> params);
-    default void helpHandler(MessageChannel channel, User self) {
-        channel.createEmbed(embedCreateSpec -> {
-            embedCreateSpec.setColor(Menmu.DEFAULT_EMBED_COLOR);
-            embedCreateSpec.setAuthor(self.getUsername() + "'s Helpdesk", Menmu.INVITE_URL, self.getAvatarUrl());
-            embedCreateSpec.setDescription("No Help Message provided for this command.");
-        }).subscribe();
+    Mono<Void> handle(ChatInputInteractionEvent event);
+
+    default void helpHandler(ChatInputInteractionEvent event) {
+        event.getClient().getSelf()
+                .map(self -> EmbedCreateSpec.builder()
+                    .color(Menmu.DEFAULT_EMBED_COLOR)
+                    .author(self.getUsername() + "'s Helpdesk", Menmu.INVITE_URL, self.getAvatarUrl())
+                    .description("No Help Message provided for this command.")
+                    .build())
+                .flatMap(embedSpec -> event.reply(InteractionApplicationCommandCallbackSpec.builder().addEmbed(embedSpec).build()))
+                .subscribe();
     }
 }

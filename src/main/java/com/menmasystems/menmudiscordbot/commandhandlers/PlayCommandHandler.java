@@ -12,10 +12,12 @@ import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
 import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
-import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.object.entity.Message;
-import discord4j.core.object.entity.User;
-import discord4j.core.object.entity.channel.MessageChannel;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.object.command.ApplicationCommandInteractionOption;
+import discord4j.core.object.command.ApplicationCommandInteractionOptionValue;
+import discord4j.core.spec.EmbedCreateSpec;
+import discord4j.core.spec.InteractionApplicationCommandCallbackSpec;
+import discord4j.core.spec.InteractionFollowupCreateSpec;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
@@ -32,52 +34,51 @@ import java.util.List;
 public class PlayCommandHandler implements CommandHandler {
 
     @Override
-    public Mono<Void> handle(MessageCreateEvent event, MessageChannel channel, List<String> params) {
-        if(event.getGuildId().isEmpty())
+    public Mono<Void> handle(ChatInputInteractionEvent event) {
+        if(event.getInteraction().getGuildId().isEmpty())
             return Mono.error(new CommandExecutionException("play", "Guild ID is empty."));
 
-        GuildData guildData = Menmu.getGuildData(event.getGuildId().get());
+        GuildData guildData = Menmu.getGuildData(event.getInteraction().getGuildId().get());
+        List<ApplicationCommandInteractionOption> options = event.getOptions();
 
-        if(params.size() >= 2) {
-            if(event.getMember().isEmpty()) return Mono.error(new CommandExecutionException("play", "Member is empty"));
+        if(event.getOption("url").isPresent()) {
+            if(event.getInteraction().getMember().isEmpty()) return Mono.error(new CommandExecutionException("play", "Member is empty"));
 
             final String loadItem;
-            MenmuTrackData trackData = new MenmuTrackData(event.getMember().get());
+            MenmuTrackData trackData = new MenmuTrackData(event.getInteraction().getMember().get());
 
-            if(params.get(1).startsWith("http://") || params.get(1).startsWith("https://")) {
+            @SuppressWarnings("OptionalGetWithoutIsPresent")
+            String url = event.getOption("url")
+                    .flatMap(ApplicationCommandInteractionOption::getValue)
+                    .map(ApplicationCommandInteractionOptionValue::asString)
+                    .get();
+
+            event.deferReply().block();
+
+            if(url.startsWith("http://") || url.startsWith("https://")) {
                 // Looks like a url, just load it up for request on player manager later.
-                loadItem = trackData.url = params.get(1);
+                loadItem = trackData.url = url;
             } else {
-                // Assuming text params, rebuilding into string
-                StringBuilder sb = new StringBuilder();
-                for(String s : params.subList(1, params.size())) {
-                    sb.append(s).append(" ");
-                }
-                String searchText = sb.toString().trim();
-
-                // Now we call search on YouTube API see if we can get results
+                // Assuming text, call search on YouTube API see if we can get results
                 try {
-                    Message message = channel.createMessage(":mag_right: Searching for `" + searchText + "`...").block();
-                    SearchResult ytResults = Menmu.getYoutubeSearch().getYtVideoDataBySearchQuery(searchText);
+                    SearchResult ytResults = Menmu.getYoutubeSearch().getYtVideoDataBySearchQuery(url);
                     if(ytResults != null) {
                         loadItem = trackData.url = "https://www.youtube.com/watch?v=" + ytResults.getId().getVideoId();
                         trackData.channelName = ytResults.getSnippet().getChannelTitle();
                         trackData.thumbnailUrl = ytResults.getSnippet().getThumbnails().getDefault().getUrl();
                         trackData.ytInfoFetched = true;
                     } else {
-                        String msg = ":no_entry_sign: Search for `" + searchText + "` returned no results.";
-                        if(message != null) message.edit(spec -> spec.setContent(msg)).block();
-                        else channel.createMessage(msg).block();
+                        String msg = ":no_entry_sign: Search for `" + url + "` returned no results.";
+                        InteractionFollowupCreateSpec spec = InteractionFollowupCreateSpec.builder().content(msg).build();
+                        event.createFollowup(spec).block();
                         return Mono.empty();
                     }
-                    if(message != null) message.delete().subscribe();
                 } catch (RuntimeException e) {
                     return Mono.error(e);
                 }
             }
 
             // Now we can attempt to load the track or playlist.
-            final Message enqueuingMessage = channel.createMessage(":cd: Enqueuing...").block();
             Menmu.getPlayerManager().loadItem(loadItem, new AudioLoadResultHandler() {
                 @Override
                 public void trackLoaded(AudioTrack track) {
@@ -85,54 +86,57 @@ public class PlayCommandHandler implements CommandHandler {
                     track.setUserData(trackData);
                     MenmuTrackScheduler trackScheduler = guildData.getTrackScheduler();
                     trackScheduler.queue(track);
-                    if(enqueuingMessage != null) enqueuingMessage.delete().subscribe();
                     List<AudioTrack> repeatingQueue = guildData.getQueueOnRepeat();
                     int size = (repeatingQueue != null) ? repeatingQueue.size() : trackScheduler.queue.size();
-                    Menmu.sendSuccessMessage(channel, String.format(":white_check_mark: Enqueued `%s` to position %d",
-                                    track.getInfo().title, size));
+                    EmbedCreateSpec spec = Menmu.createSuccessEmbedSpec(
+                            String.format(":white_check_mark: Enqueued `%s` to position %d", track.getInfo().title, size)
+                    );
+                    event.createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(spec).build()).block();
 
-                    play(event, channel, guildData).doOnError(e -> {
+                    play(event, guildData).doOnError(e -> {
                         if(e instanceof CommandExecutionException)
-                            ((CommandExecutionException) e).createErrorMessage(channel).subscribe();
+                            ((CommandExecutionException) e).createErrorMessage(event).subscribe();
                         String msg = ":no_entry_sign: Cannot auto start playing. Use command `play` to play manually.";
-                        Menmu.sendErrorMessage(channel, msg, null);
+                        EmbedCreateSpec errorSpec = Menmu.createErrorEmbedSpec(msg, null);
+                        event.createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(errorSpec).build()).block();
                     }).subscribe();
                 }
 
                 @Override
                 public void playlistLoaded(AudioPlaylist playlist) {
                     for(AudioTrack track : playlist.getTracks()) {
-                        MenmuTrackData menmuTrackData = new MenmuTrackData(event.getMember().get());
+                        MenmuTrackData menmuTrackData = new MenmuTrackData(event.getInteraction().getMember().get());
                         menmuTrackData.dateTimeRequested = Instant.now();
                         if(track.getSourceManager().getSourceName().equals("youtube"))
                             menmuTrackData.url = "https://www.youtube.com/watch?v=" + track.getIdentifier();
                         track.setUserData(menmuTrackData);
                         guildData.getTrackScheduler().queue(track);
                     }
-                    if(enqueuingMessage != null) enqueuingMessage.delete().subscribe();
-                    Menmu.sendSuccessMessage(channel,
+                    EmbedCreateSpec spec = Menmu.createSuccessEmbedSpec(
                             String.format(":white_check_mark: Enqueued %d songs from playlist `%s`",
                                     playlist.getTracks().size(), playlist.getName()));
+                    event.createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(spec).build()).block();
 
-                    play(event, channel, guildData).doOnError(e -> {
+                    play(event, guildData).doOnError(e -> {
                         if(e instanceof CommandExecutionException)
-                            ((CommandExecutionException) e).createErrorMessage(channel).subscribe();
+                            ((CommandExecutionException) e).createErrorMessage(event).subscribe();
                         String msg = ":no_entry_sign: Cannot auto start playing. Use command `play` to play manually.";
-                        Menmu.sendErrorMessage(channel, msg, null);
+                        EmbedCreateSpec errorSpec = Menmu.createErrorEmbedSpec(msg, null);
+                        event.createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(errorSpec).build()).block();
                     }).subscribe();
                 }
 
                 @Override
                 public void noMatches() {
-                    if(enqueuingMessage != null) enqueuingMessage.delete().subscribe();
-                    Menmu.sendErrorMessage(channel, ":no_entry_sign: Error: No Matches", null);
+                    EmbedCreateSpec spec = Menmu.createErrorEmbedSpec(":no_entry_sign: Error: No Matches", null);
+                    event.createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(spec).build()).block();
                 }
 
                 @Override
                 public void loadFailed(FriendlyException exception) {
-                    if(enqueuingMessage != null) enqueuingMessage.delete().subscribe();
                     String message = ":no_entry_sign: Eh... I'm sorry, but I was unable to load that track. Please try again.";
-                    Menmu.sendErrorMessage(channel, message, exception.getMessage());
+                    EmbedCreateSpec spec = Menmu.createErrorEmbedSpec(message, exception.getMessage());
+                    event.createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(spec).build()).block();
                 }
             });
         } else {
@@ -140,39 +144,45 @@ public class PlayCommandHandler implements CommandHandler {
             MenmuTrackScheduler guildTrackScheduler = guildData.getTrackScheduler();
             if(guildAudioPlayer.isPaused()) {
                 guildAudioPlayer.setPaused(false);
-                Menmu.sendSuccessMessage(channel, ":play_pause: Resuming player...");
-            } else if(guildAudioPlayer.getPlayingTrack() != null || guildTrackScheduler.queue.size() > 0) {
-                play(event, channel, guildData).block();
+                EmbedCreateSpec spec = Menmu.createSuccessEmbedSpec(":play_pause: Resuming player...");
+                event.createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(spec).build()).block();
+            } else if(guildAudioPlayer.getPlayingTrack() != null || !guildTrackScheduler.queue.isEmpty()) {
+                play(event, guildData).block();
             } else {
-                Menmu.sendErrorMessage(channel, ":no_entry_sign: Player is not paused, or music queue is empty.", null);
+                String msg = ":no_entry_sign: Player is not paused, or music queue is empty.";
+                EmbedCreateSpec errorSpec = Menmu.createErrorEmbedSpec(msg, null);
+                event.createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(errorSpec).build()).block();
             }
         }
         return Mono.empty();
     }
 
     @Override
-    public void helpHandler(MessageChannel channel, User self) {
-        channel.createEmbed(embedCreateSpec -> {
-            final String command = Menmu.getConfig().cmdPrefix + "!play";
-            final String title = "Command: `play`";
-            final String description = "Adds a song or a playlist to the guild queue and starts playing if not already playing. " +
-                    "Will also resume playing if previously paused.";
-            final String usage = String.format("`%s`\n`%s [link]`\n`%s [youtube search phrase]`", command, command, command);
-            final String examples = String.format("`%s`\n`%s https://www.youtube.com/watch?v=jrzUsHNGZHc`\n`%s knock knock penny's door`", command, command, command);
+    public void helpHandler(ChatInputInteractionEvent event) {
+        final String title = "Command: `play`";
+        final String description = "Adds a song or a playlist to the guild queue and starts playing if not already playing. " +
+                "Will also resume playing if previously paused.";
+        final String usage = "`/play`\n`/play [link]`\n`/play [youtube search phrase]`";
+        final String examples = "`/play`\n`/play https://www.youtube.com/watch?v=jrzUsHNGZHc`\n`/play knock knock penny's door`";
 
-            embedCreateSpec.setColor(Menmu.DEFAULT_EMBED_COLOR);
-            embedCreateSpec.setAuthor(self.getUsername() + "'s Helpdesk", Menmu.INVITE_URL, self.getAvatarUrl());
-            embedCreateSpec.setTitle(title);
-            embedCreateSpec.setDescription(description);
-            embedCreateSpec.addField("Usage", usage, true);
-            embedCreateSpec.addField("Examples", examples, true);
-        }).block();
+        event.getClient().getSelf()
+                .map(self -> EmbedCreateSpec.builder()
+                        .color(Menmu.DEFAULT_EMBED_COLOR)
+                        .author(self.getUsername() + "'s Helpdesk", Menmu.INVITE_URL, self.getAvatarUrl())
+                        .title(title)
+                        .description(description)
+                        .addField("Usage", usage, true)
+                        .addField("Examples", examples, true)
+                        .build())
+                .flatMap(embedSpec -> event.reply(InteractionApplicationCommandCallbackSpec.builder().addEmbed(embedSpec).build()))
+                .subscribe();
     }
 
-    private Mono<Void> play(MessageCreateEvent event, MessageChannel channel, GuildData guildData) {
+    private Mono<Void> play(ChatInputInteractionEvent event, GuildData guildData) {
         if (guildData.getVoiceConnection() == null) {
             return Menmu.getCommandHandler("join")
-                    .flatMap(commandHandler -> commandHandler.handle(event, channel, null))
+                    .cast(JoinCommandHandler.class)
+                    .flatMap(commandHandler -> commandHandler.internalHandle(event))
                     .doOnSuccess(unused -> guildData.getTrackScheduler().play()).then();
         }
         return Mono.just(guildData.getTrackScheduler().play()).then();

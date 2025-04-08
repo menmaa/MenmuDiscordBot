@@ -1,7 +1,10 @@
 package com.menmasystems.menmudiscordbot.errorhandlers;
 
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.channel.MessageChannel;
+import discord4j.core.spec.EmbedCreateSpec;
+import discord4j.core.spec.InteractionFollowupCreateSpec;
 import discord4j.rest.util.Color;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,5 +79,38 @@ public class CommandExecutionException extends Exception {
                 });
         }
         return Mono.empty();
+    }
+
+    public Mono<Message> createErrorMessage(ChatInputInteractionEvent event) {
+        if(errorType == null) return Mono.empty();
+
+        EmbedCreateSpec.Builder specBuilder = EmbedCreateSpec.builder();
+
+        switch (errorType.name()) {
+            case "UNSPECIFIED": {
+                if(throwable != null)
+                    logger.error("There was an error trying to execute command " + command, throwable);
+                specBuilder.color(Color.RED);
+                specBuilder.description(":no_entry_sign: There was an error trying to execute command `" + command + "`. " +
+                        "If the issue persists, please contact `Menma#0001`.");
+                break;
+            }
+            case "USER_VOICE_STATE_NULL":
+                specBuilder.color(Color.RED);
+                specBuilder.description(":no_entry_sign: You are not connected to any voice channels.");
+                break;
+            case "SELF_VOICE_STATE_NULL":
+                specBuilder.color(Color.RED);
+                specBuilder.description(":no_entry_sign: I am not connected to any voice channels.");
+                break;
+            case "VOICE_CONNECTION_ERROR":
+                specBuilder.color(Color.RED);
+                specBuilder.description(":no_entry_sign: There was an error trying to connect to voice. " +
+                        "If the issue persists, please contact `Menma#0001`.");
+                break;
+        }
+
+        InteractionFollowupCreateSpec spec = InteractionFollowupCreateSpec.builder().addEmbed(specBuilder.build()).build();
+        return event.createFollowup(spec);
     }
 }

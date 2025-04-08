@@ -17,20 +17,26 @@ import discord4j.core.event.domain.VoiceStateUpdateEvent;
 import discord4j.core.event.domain.guild.GuildCreateEvent;
 import discord4j.core.event.domain.guild.GuildDeleteEvent;
 import discord4j.core.event.domain.guild.GuildUpdateEvent;
+import discord4j.core.event.domain.interaction.ApplicationCommandInteractionEvent;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
-import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.ReactionAddEvent;
+import discord4j.core.object.command.ApplicationCommandOption;
+import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.MessageChannel;
+import discord4j.core.spec.EmbedCreateSpec;
+import discord4j.core.spec.InteractionApplicationCommandCallbackSpec;
+import discord4j.core.spec.InteractionFollowupCreateSpec;
+import discord4j.discordjson.json.ApplicationCommandOptionData;
+import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.rest.util.Color;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -84,11 +90,121 @@ public class Menmu {
         getDiscordGateway().on(GuildCreateEvent.class).subscribe(new GuildCreateEventHandler());
         getDiscordGateway().on(GuildDeleteEvent.class).subscribe(new GuildDeleteEventHandler());
         getDiscordGateway().on(GuildUpdateEvent.class).subscribe(new GuildUpdateEventHandler());
-        getDiscordGateway().on(MessageCreateEvent.class).subscribe(new MessageCreateEventHandler());
+        getDiscordGateway().on(ChatInputInteractionEvent.class).subscribe(new ChatInputInteractionEventHandler());
         getDiscordGateway().on(VoiceStateUpdateEvent.class).subscribe(new VoiceStateUpdateEventHandler());
         getDiscordGateway().on(ReactionAddEvent.class).subscribe(new ReactionAddEventHandler());
-
+        registerCommands();
         getDiscordGateway().onDisconnect().block();
+    }
+
+    private static void registerCommands() {
+        long applicationId = getDiscordGateway().getRestClient().getApplicationId().block();
+
+        List<ApplicationCommandRequest> commandRequestList = new ArrayList<>();
+
+        commandRequestList.add(ApplicationCommandRequest.builder()
+                .name("help")
+                .description("Displays the help box")
+                .addOption(ApplicationCommandOptionData.builder()
+                        .name("command")
+                        .description("Command to view details of")
+                        .type(ApplicationCommandOption.Type.STRING.getValue())
+                        .required(false)
+                        .build()
+                )
+                .build());
+
+        commandRequestList.add(ApplicationCommandRequest.builder()
+                .name("join")
+                .description("Joins current voice channel")
+                .build());
+
+        commandRequestList.add(ApplicationCommandRequest.builder()
+                .name("leave")
+                .description("Leaves current voice channel")
+                .build());
+
+        commandRequestList.add(ApplicationCommandRequest.builder()
+                .name("play")
+                .description("Adds an entry to the playing queue")
+                .addOption(ApplicationCommandOptionData.builder()
+                        .name("url")
+                        .description("URL/Link of Youtube Video OR YouTube search phrase")
+                        .type(ApplicationCommandOption.Type.STRING.getValue())
+                        .required(true)
+                        .build()
+                ).build());
+
+        commandRequestList.add(ApplicationCommandRequest.builder()
+                .name("stop")
+                .description("Stops playing current track")
+                .build());
+
+        commandRequestList.add(ApplicationCommandRequest.builder()
+                .name("repeat")
+                .description("Enables/disables current song repeat")
+                .build());
+
+        commandRequestList.add(ApplicationCommandRequest.builder()
+                .name("clear")
+                .description("Clears/purges the guild music queue")
+                .build());
+
+        commandRequestList.add(ApplicationCommandRequest.builder()
+                .name("skip")
+                .description("Stops playing the current track and skips to the next or moves to the specified position")
+                .addOption(ApplicationCommandOptionData.builder()
+                        .name("position")
+                        .description("Position in queue to skip to")
+                        .type(ApplicationCommandOption.Type.INTEGER.getValue())
+                        .required(false)
+                        .build()
+                )
+                .build());
+
+        commandRequestList.add(ApplicationCommandRequest.builder()
+                .name("pause")
+                .description("Pauses the music player")
+                .build());
+
+        commandRequestList.add(ApplicationCommandRequest.builder()
+                .name("queue")
+                .description("Displays the contents of the guild music queue")
+                .build());
+
+        commandRequestList.add(ApplicationCommandRequest.builder()
+                .name("repeatqueue")
+                .description("Enables/disables current guild music queue repeat")
+                .build());
+
+        commandRequestList.add(ApplicationCommandRequest.builder()
+                .name("remove")
+                .description("Removes the entry in the specified position from the guild music queue")
+                .addOption(ApplicationCommandOptionData.builder()
+                        .name("position")
+                        .description("Position in queue to remove entry")
+                        .type(ApplicationCommandOption.Type.INTEGER.getValue())
+                        .required(true)
+                        .build()
+                )
+                .build());
+
+        commandRequestList.add(ApplicationCommandRequest.builder()
+                .name("seek")
+                .description("Seeks to the inserted timestamp position in the currently playing track")
+                .addOption(ApplicationCommandOptionData.builder()
+                        .name("timestamp")
+                        .description("Time to seek to, formatted in m:ss/h:mm:ss")
+                        .type(ApplicationCommandOption.Type.STRING.getValue())
+                        .required(true)
+                        .build()
+                )
+                .build());
+
+
+        getDiscordGateway().getRestClient().getApplicationService()
+                .bulkOverwriteGlobalApplicationCommand(applicationId, commandRequestList)
+                .subscribe();
     }
 
     private static void registerCommandHandlers() {
@@ -105,12 +221,6 @@ public class Menmu {
         commandHandlers.put("repeatqueue", new RepeatQueueCommandHandler());
         commandHandlers.put("remove", new RemoveCommandHandler());
         commandHandlers.put("seek", new SeekCommandHandler());
-
-        commandHandlers.put("kill", new KillCommandHandler());
-        commandHandlers.put("hug", new HugCommandHandler());
-        commandHandlers.put("wink", new WinkCommandHandler());
-        commandHandlers.put("kiss", new KissCommandHandler());
-        commandHandlers.put("punch", new PunchCommandHandler());
     }
 
     public static Mono<CommandHandler> getCommandHandler(String command) {
@@ -152,6 +262,26 @@ public class Menmu {
         }
     }
 
+    public static EmbedCreateSpec createSuccessEmbedSpec(String message) {
+        return EmbedCreateSpec.builder().color(Color.GREEN).description(message).build();
+    }
+
+    public static Mono<Message> sendSuccessInteractionReply(ApplicationCommandInteractionEvent event, String message, boolean followUp) {
+        if(followUp)
+            return Mono.just(createSuccessEmbedSpec(message))
+                    .map(embedSpec -> InteractionFollowupCreateSpec.builder().addEmbed(embedSpec).build())
+                    .flatMap(event::createFollowup);
+
+        return Mono.just(createSuccessEmbedSpec(message))
+                .map(embedSpec -> InteractionApplicationCommandCallbackSpec.builder().addEmbed(embedSpec).build())
+                .flatMap(event::reply)
+                .then(event.getReply());
+    }
+
+    public static Mono<Message> sendSuccessInteractionReply(ApplicationCommandInteractionEvent event, String message) {
+        return sendSuccessInteractionReply(event, message, false);
+    }
+
     public static void sendErrorMessage(@Nullable MessageChannel channel, String message, @Nullable String errorMessage) {
         if(channel != null) {
             channel.createEmbed(embedCreateSpec -> {
@@ -161,6 +291,32 @@ public class Menmu {
                     embedCreateSpec.addField("Error Message", errorMessage, false);
             }).subscribe();
         }
+    }
+
+    public static EmbedCreateSpec createErrorEmbedSpec(String message, @Nullable String errorMessage) {
+        EmbedCreateSpec.Builder spec = EmbedCreateSpec.builder();
+        spec.color(Color.RED);
+        spec.description(message);
+        if(errorMessage != null)
+            spec.addField("Error Message", errorMessage, false);
+
+        return spec.build();
+    }
+
+    public static Mono<Message> sendErrorInteractionReply(ApplicationCommandInteractionEvent event, String message, @Nullable String errorMessage, boolean followUp) {
+        if(followUp)
+            return Mono.just(createErrorEmbedSpec(message, errorMessage))
+                    .map(embedSpec -> InteractionFollowupCreateSpec.builder().addEmbed(embedSpec).build())
+                    .flatMap(event::createFollowup);
+
+        return Mono.just(createErrorEmbedSpec(message, errorMessage))
+                .map(embedSpec -> InteractionApplicationCommandCallbackSpec.builder().addEmbed(embedSpec).build())
+                .flatMap(event::reply)
+                .then(event.getReply());
+    }
+
+    public static Mono<Message> sendErrorInteractionReply(ApplicationCommandInteractionEvent event, String message, @Nullable String errorMessage) {
+        return sendErrorInteractionReply(event, message, errorMessage, false);
     }
 
     public static YoutubeSearch getYoutubeSearch() {

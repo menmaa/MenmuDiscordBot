@@ -4,8 +4,10 @@ import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.voice.VoiceConnection;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 
@@ -24,7 +26,7 @@ public class GuildData {
     private final MenmuAudioProvider audioProvider;
     private final MenmuTrackScheduler trackScheduler;
     private VoiceConnection voiceConnection;
-    private TextChannel boundTextChannel;
+    private MessageChannel boundMessageChannel;
     private boolean repeatCurrentTrack;
     private Message musicQueueMessage;
     private int musicQueuePage;
@@ -42,16 +44,18 @@ public class GuildData {
         return voiceConnection;
     }
 
-    public void setVoiceConnection(VoiceConnection voiceConnection) {
+    public Mono<Void> setVoiceConnection(VoiceConnection voiceConnection) {
         this.voiceConnection = voiceConnection;
+        return Mono.empty();
     }
 
-    public TextChannel getBoundTextChannel() {
-        return boundTextChannel;
+    public MessageChannel getBoundMessageChannel() {
+        return boundMessageChannel;
     }
 
-    public void setBoundTextChannel(TextChannel boundTextChannel) {
-        this.boundTextChannel = boundTextChannel;
+    public Mono<Void> setBoundMessageChannel(MessageChannel boundMessageChannel) {
+        this.boundMessageChannel = boundMessageChannel;
+        return Mono.empty();
     }
 
     public MenmuAudioProvider getAudioProvider() {

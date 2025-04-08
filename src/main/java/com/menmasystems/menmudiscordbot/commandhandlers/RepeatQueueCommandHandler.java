@@ -4,9 +4,9 @@ import com.menmasystems.menmudiscordbot.Menmu;
 import com.menmasystems.menmudiscordbot.MenmuTrackScheduler;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
-import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.object.entity.User;
-import discord4j.core.object.entity.channel.MessageChannel;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.spec.EmbedCreateSpec;
+import discord4j.core.spec.InteractionApplicationCommandCallbackSpec;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -21,8 +21,8 @@ import java.util.List;
 
 public class RepeatQueueCommandHandler implements CommandHandler {
     @Override
-    public Mono<Void> handle(MessageCreateEvent event, MessageChannel channel, List<String> params) {
-        return Mono.justOrEmpty(event.getGuildId())
+    public Mono<Void> handle(ChatInputInteractionEvent event) {
+        return Mono.justOrEmpty(event.getInteraction().getGuildId())
                 .map(Menmu::getGuildData)
                 .doOnNext(guildData -> {
                     if(guildData.getQueueOnRepeat() == null) {
@@ -31,30 +31,31 @@ public class RepeatQueueCommandHandler implements CommandHandler {
                         List<AudioTrack> queueAsList = trackScheduler.getQueueAsList();
 
                         if(np != null) queueAsList.add(0, np);
-                        if(queueAsList.size() == 0) {
-                            Menmu.sendErrorMessage(channel, ":no_entry_sign: Queue is empty!", null);
+                        if(queueAsList.isEmpty()) {
+                            Menmu.sendErrorInteractionReply(event, ":no_entry_sign: Queue is empty!", null).subscribe();
                             return;
                         }
 
                         guildData.setQueueOnRepeat(queueAsList);
-                        Menmu.sendSuccessMessage(channel, ":white_check_mark: Current queue repeat enabled.");
+                        Menmu.sendSuccessInteractionReply(event, ":white_check_mark: Current queue repeat enabled.").subscribe();
                     } else {
                         guildData.setQueueOnRepeat(null);
-                        Menmu.sendErrorMessage(channel, ":no_entry: Current queue repeat disabled.", null);
+                        Menmu.sendErrorInteractionReply(event, ":no_entry: Current queue repeat disabled.", null).subscribe();
                     }
                 }).then();
     }
 
     @Override
-    public void helpHandler(MessageChannel channel, User self) {
-        channel.createEmbed(embedCreateSpec -> {
-            final String command = Menmu.getConfig().cmdPrefix + "!repeatqueue";
-
-            embedCreateSpec.setColor(Menmu.DEFAULT_EMBED_COLOR);
-            embedCreateSpec.setAuthor(self.getUsername() + "'s Helpdesk", Menmu.INVITE_URL, self.getAvatarUrl());
-            embedCreateSpec.setTitle("Command: `repeatqueue`");
-            embedCreateSpec.setDescription("Enables/disables current guild music queue repeat.");
-            embedCreateSpec.addField("Usage", "`"+command+"`", true);
-        }).block();
+    public void helpHandler(ChatInputInteractionEvent event) {
+        event.getClient().getSelf()
+                .map(self -> EmbedCreateSpec.builder()
+                        .color(Menmu.DEFAULT_EMBED_COLOR)
+                        .author(self.getUsername() + "'s Helpdesk", Menmu.INVITE_URL, self.getAvatarUrl())
+                        .title("Command: `repeatqueue`")
+                        .description("Enables/disables current guild music queue repeat.")
+                        .addField("Usage", "`/repeatqueue`", true)
+                        .build())
+                .flatMap(embedSpec -> event.reply(InteractionApplicationCommandCallbackSpec.builder().addEmbed(embedSpec).build()))
+                .subscribe();
     }
 }
