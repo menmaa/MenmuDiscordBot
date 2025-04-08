@@ -1,7 +1,7 @@
 package com.menmasystems.menmudiscordbot.interfaces;
 
 import com.menmasystems.menmudiscordbot.Menmu;
-import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import com.menmasystems.menmudiscordbot.MenmuCommandInteractionEvent;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.core.spec.InteractionApplicationCommandCallbackSpec;
 import reactor.core.publisher.Mono;
@@ -15,9 +15,9 @@ import reactor.core.publisher.Mono;
  */
 
 public interface CommandHandler {
-    Mono<Void> handle(ChatInputInteractionEvent event);
+    Mono<Void> handle(MenmuCommandInteractionEvent event);
 
-    default void helpHandler(ChatInputInteractionEvent event) {
+    default void helpHandler(MenmuCommandInteractionEvent event) {
         event.getClient().getSelf()
                 .map(self -> EmbedCreateSpec.builder()
                     .color(Menmu.DEFAULT_EMBED_COLOR)

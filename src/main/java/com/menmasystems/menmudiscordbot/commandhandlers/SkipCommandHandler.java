@@ -2,11 +2,11 @@ package com.menmasystems.menmudiscordbot.commandhandlers;
 
 import com.menmasystems.menmudiscordbot.GuildData;
 import com.menmasystems.menmudiscordbot.Menmu;
+import com.menmasystems.menmudiscordbot.MenmuCommandInteractionEvent;
 import com.menmasystems.menmudiscordbot.MenmuTrackScheduler;
 import com.menmasystems.menmudiscordbot.errorhandlers.InvalidQueuePositionException;
 import com.menmasystems.menmudiscordbot.errorhandlers.MusicQueueEmptyException;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
-import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandInteractionOption;
 import discord4j.core.object.command.ApplicationCommandInteractionOptionValue;
 import discord4j.core.spec.EmbedCreateSpec;
@@ -23,14 +23,14 @@ import reactor.core.publisher.Mono;
 
 public class SkipCommandHandler implements CommandHandler {
     @Override
-    public Mono<Void> handle(ChatInputInteractionEvent event) {
+    public Mono<Void> handle(MenmuCommandInteractionEvent event) {
         if(event.getOption("position").isEmpty()) {
             return Mono.justOrEmpty(event.getInteraction().getGuildId())
                     .map(Menmu::getGuildData)
                     .map(GuildData::getTrackScheduler)
                     .flatMap(MenmuTrackScheduler::skip)
-                    .doOnSuccess(unused -> Menmu.sendSuccessInteractionReply(event, ":white_check_mark: Song skipped!").subscribe())
-                    .doOnError(MusicQueueEmptyException.class, error -> Menmu.sendErrorInteractionReply(event, ":no_entry_sign: Queue is empty!", null).subscribe()).then();
+                    .doOnSuccess(unused -> event.sendSuccessInteractionReply(":white_check_mark: Song skipped!").subscribe())
+                    .doOnError(MusicQueueEmptyException.class, error -> event.sendErrorInteractionReply(":no_entry_sign: Queue is empty!", null).subscribe()).then();
         } else {
             try {
                 @SuppressWarnings("OptionalGetWithoutIsPresent")
@@ -48,19 +48,19 @@ public class SkipCommandHandler implements CommandHandler {
                         .map(GuildData::getTrackScheduler)
                         .flatMap(trackScheduler -> trackScheduler.skipTo((int) position))
                         .doOnSuccess(unused -> {
-                            Menmu.sendSuccessInteractionReply(event,":white_check_mark: Skipped to position " + position + " in queue.").subscribe();
+                            event.sendSuccessInteractionReply(":white_check_mark: Skipped to position " + position + " in queue.").subscribe();
                         }).doOnError(InvalidQueuePositionException.class, error ->
-                                Menmu.sendErrorInteractionReply(event, ":no_entry_sign: No track in position " + position + " found in queue.", null).subscribe())
+                                event.sendErrorInteractionReply(":no_entry_sign: No track in position " + position + " found in queue.", null).subscribe())
                         .then();
             } catch (NumberFormatException e) {
-                Menmu.sendErrorInteractionReply(event, ":no_entry_sign: That is not a valid number!", null).subscribe();
+                event.sendErrorInteractionReply(":no_entry_sign: That is not a valid number!", null).subscribe();
             }
         }
         return Mono.empty();
     }
 
     @Override
-    public void helpHandler(ChatInputInteractionEvent event) {
+    public void helpHandler(MenmuCommandInteractionEvent event) {
         final String title = "Command: `skip`";
         final String description = "Stops playing the current track and skips to the next in the guild music queue. " +
                 "If a number is specified as a parameter, moves to that position in queue, skipping all songs before it.";

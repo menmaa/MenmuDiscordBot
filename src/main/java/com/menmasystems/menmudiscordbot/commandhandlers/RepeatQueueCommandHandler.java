@@ -1,10 +1,10 @@
 package com.menmasystems.menmudiscordbot.commandhandlers;
 
 import com.menmasystems.menmudiscordbot.Menmu;
+import com.menmasystems.menmudiscordbot.MenmuCommandInteractionEvent;
 import com.menmasystems.menmudiscordbot.MenmuTrackScheduler;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
-import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.core.spec.InteractionApplicationCommandCallbackSpec;
 import reactor.core.publisher.Mono;
@@ -21,7 +21,7 @@ import java.util.List;
 
 public class RepeatQueueCommandHandler implements CommandHandler {
     @Override
-    public Mono<Void> handle(ChatInputInteractionEvent event) {
+    public Mono<Void> handle(MenmuCommandInteractionEvent event) {
         return Mono.justOrEmpty(event.getInteraction().getGuildId())
                 .map(Menmu::getGuildData)
                 .doOnNext(guildData -> {
@@ -32,21 +32,21 @@ public class RepeatQueueCommandHandler implements CommandHandler {
 
                         if(np != null) queueAsList.add(0, np);
                         if(queueAsList.isEmpty()) {
-                            Menmu.sendErrorInteractionReply(event, ":no_entry_sign: Queue is empty!", null).subscribe();
+                            event.sendErrorInteractionReply(":no_entry_sign: Queue is empty!", null).subscribe();
                             return;
                         }
 
                         guildData.setQueueOnRepeat(queueAsList);
-                        Menmu.sendSuccessInteractionReply(event, ":white_check_mark: Current queue repeat enabled.").subscribe();
+                        event.sendSuccessInteractionReply(":white_check_mark: Current queue repeat enabled.").subscribe();
                     } else {
                         guildData.setQueueOnRepeat(null);
-                        Menmu.sendErrorInteractionReply(event, ":no_entry: Current queue repeat disabled.", null).subscribe();
+                        event.sendErrorInteractionReply(":no_entry: Current queue repeat disabled.", null).subscribe();
                     }
                 }).then();
     }
 
     @Override
-    public void helpHandler(ChatInputInteractionEvent event) {
+    public void helpHandler(MenmuCommandInteractionEvent event) {
         event.getClient().getSelf()
                 .map(self -> EmbedCreateSpec.builder()
                         .color(Menmu.DEFAULT_EMBED_COLOR)

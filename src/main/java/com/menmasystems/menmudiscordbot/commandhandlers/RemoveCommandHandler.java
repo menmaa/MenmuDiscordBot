@@ -2,9 +2,9 @@ package com.menmasystems.menmudiscordbot.commandhandlers;
 
 import com.menmasystems.menmudiscordbot.GuildData;
 import com.menmasystems.menmudiscordbot.Menmu;
+import com.menmasystems.menmudiscordbot.MenmuCommandInteractionEvent;
 import com.menmasystems.menmudiscordbot.errorhandlers.InvalidQueuePositionException;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
-import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandInteractionOption;
 import discord4j.core.object.command.ApplicationCommandInteractionOptionValue;
 import discord4j.core.spec.EmbedCreateSpec;
@@ -21,7 +21,7 @@ import reactor.core.publisher.Mono;
 
 public class RemoveCommandHandler implements CommandHandler {
     @Override
-    public Mono<Void> handle(ChatInputInteractionEvent event) {
+    public Mono<Void> handle(MenmuCommandInteractionEvent event) {
         try {
             @SuppressWarnings("OptionalGetWithoutIsPresent")
             long position = event.getOption("position")
@@ -39,20 +39,21 @@ public class RemoveCommandHandler implements CommandHandler {
                     .flatMap(trackScheduler -> trackScheduler.removeQueue((int) position))
                     .doOnSuccess(removed -> {
                         String msg = ":no_entry: Track `%s` has been removed from the music queue.";
-                        Menmu.sendErrorInteractionReply(event, String.format(msg, removed.getInfo().title), null).subscribe();
+                        event.sendErrorInteractionReply(String.format(msg, removed.getInfo().title), null).subscribe();
                     })
-                    .onErrorResume(error -> error instanceof InvalidQueuePositionException, error -> {
-                        Menmu.sendErrorInteractionReply(event, ":no_entry_sign: Track does not exist in the music queue.", null).subscribe();
-                        return Mono.empty();
-                    }).then();
+                    .onErrorResume(InvalidQueuePositionException.class, error -> {
+                        String msg = ":no_entry_sign: Track does not exist in the music queue.";
+                        return event.sendErrorInteractionReply(msg, null).then(Mono.empty());
+                    })
+                    .then();
         } catch (NumberFormatException | IndexOutOfBoundsException e) {
-            Menmu.sendErrorInteractionReply(event, ":no_entry_sign: Invalid position number or no number provided. Correct Usage: `remove [position in queue]`. e.g.: `remove 3`", null).subscribe();
+            event.sendErrorInteractionReply(":no_entry_sign: Invalid position number or no number provided. Correct Usage: `remove [position in queue]`. e.g.: `remove 3`", null).subscribe();
         }
         return Mono.empty();
     }
 
     @Override
-    public void helpHandler(ChatInputInteractionEvent event) {
+    public void helpHandler(MenmuCommandInteractionEvent event) {
         event.getClient().getSelf()
                 .map(self -> EmbedCreateSpec.builder()
                         .color(Menmu.DEFAULT_EMBED_COLOR)

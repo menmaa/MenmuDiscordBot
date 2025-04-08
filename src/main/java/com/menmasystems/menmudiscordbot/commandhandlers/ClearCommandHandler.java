@@ -2,9 +2,9 @@ package com.menmasystems.menmudiscordbot.commandhandlers;
 
 import com.menmasystems.menmudiscordbot.GuildData;
 import com.menmasystems.menmudiscordbot.Menmu;
+import com.menmasystems.menmudiscordbot.MenmuCommandInteractionEvent;
 import com.menmasystems.menmudiscordbot.MenmuTrackScheduler;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
-import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.core.spec.InteractionApplicationCommandCallbackSpec;
 import discord4j.rest.util.Color;
@@ -20,25 +20,16 @@ import reactor.core.publisher.Mono;
 
 public class ClearCommandHandler implements CommandHandler {
     @Override
-    public Mono<Void> handle(ChatInputInteractionEvent event) {
+    public Mono<Void> handle(MenmuCommandInteractionEvent event) {
         return Mono.justOrEmpty(event.getInteraction().getGuildId())
                 .map(Menmu::getGuildData)
                 .map(GuildData::getTrackScheduler)
                 .map(MenmuTrackScheduler::purgeQueue)
-                .flatMap(queue -> {
-                    EmbedCreateSpec.Builder embedBuilder = EmbedCreateSpec.builder();
-                    embedBuilder.color(Color.GREEN);
-                    embedBuilder.description(":white_check_mark: Music queue purged.");
-
-                    InteractionApplicationCommandCallbackSpec spec = InteractionApplicationCommandCallbackSpec.builder()
-                            .addEmbed(embedBuilder.build()).build();
-
-                    return event.reply(spec);
-                });
+                .then(event.sendSuccessInteractionReply(":white_check_mark: Music queue purged."));
     }
 
     @Override
-    public void helpHandler(ChatInputInteractionEvent event) {
+    public void helpHandler(MenmuCommandInteractionEvent event) {
         event.getClient().getSelf()
                 .map(self -> EmbedCreateSpec.builder()
                         .color(Menmu.DEFAULT_EMBED_COLOR)

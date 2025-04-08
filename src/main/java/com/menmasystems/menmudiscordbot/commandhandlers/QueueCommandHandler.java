@@ -1,15 +1,11 @@
 package com.menmasystems.menmudiscordbot.commandhandlers;
 
-import com.menmasystems.menmudiscordbot.GuildData;
-import com.menmasystems.menmudiscordbot.Menmu;
-import com.menmasystems.menmudiscordbot.MenmuTrackData;
-import com.menmasystems.menmudiscordbot.MenmuTrackScheduler;
+import com.menmasystems.menmudiscordbot.*;
 import com.menmasystems.menmudiscordbot.errorhandlers.CommandExecutionException;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.tools.Units;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
-import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.core.spec.EmbedCreateSpec;
@@ -31,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 
 public class QueueCommandHandler implements CommandHandler {
     @Override
-    public Mono<Void> handle(ChatInputInteractionEvent event) {
+    public Mono<Void> handle(MenmuCommandInteractionEvent event) {
         if(event.getInteraction().getGuildId().isEmpty())
             return Mono.error(new CommandExecutionException("play", "Guild ID is empty."));
 
@@ -47,7 +43,7 @@ public class QueueCommandHandler implements CommandHandler {
         }
 
         if(trackList.isEmpty()) {
-            Menmu.sendErrorInteractionReply(event, ":no_entry_sign: Music Queue Empty.", null).subscribe();
+            event.sendErrorInteractionReply(":no_entry_sign: Music Queue Empty.", null).subscribe();
             return Mono.empty();
         }
 
@@ -140,7 +136,7 @@ public class QueueCommandHandler implements CommandHandler {
     }
 
     @Override
-    public void helpHandler(ChatInputInteractionEvent event) {
+    public void helpHandler(MenmuCommandInteractionEvent event) {
         event.getClient().getSelf()
                 .map(self -> EmbedCreateSpec.builder()
                         .color(Menmu.DEFAULT_EMBED_COLOR)

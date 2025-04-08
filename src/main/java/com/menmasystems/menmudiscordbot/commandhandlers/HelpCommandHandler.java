@@ -1,8 +1,8 @@
 package com.menmasystems.menmudiscordbot.commandhandlers;
 
 import com.menmasystems.menmudiscordbot.Menmu;
+import com.menmasystems.menmudiscordbot.MenmuCommandInteractionEvent;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
-import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandInteractionOption;
 import discord4j.core.object.command.ApplicationCommandInteractionOptionValue;
 import discord4j.core.spec.EmbedCreateSpec;
@@ -19,7 +19,7 @@ import reactor.core.publisher.Mono;
 
 public class HelpCommandHandler implements CommandHandler {
     @Override
-    public Mono<Void> handle(ChatInputInteractionEvent event) {
+    public Mono<Void> handle(MenmuCommandInteractionEvent event) {
         return event.getClient().getSelf()
                 .flatMap(self -> {
                     if(event.getOption("command").isPresent()) {
@@ -33,7 +33,7 @@ public class HelpCommandHandler implements CommandHandler {
                                 .onErrorResume(error -> {
                                     String message = ":no_entry_sign: I'm sorry, I cannot display help for an invalid command. " +
                                             "Please try command `help` with no parameters for a list of available commands.";
-                                    Menmu.sendErrorInteractionReply(event, message, null).subscribe();
+                                    event.sendErrorInteractionReply(message, null).subscribe();
                                     return Mono.empty();
                                 }).then();
                     } else {
