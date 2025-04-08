@@ -1,10 +1,7 @@
 package com.menmasystems.menmudiscordbot.commandhandlers;
 
 import com.google.api.services.youtube.model.SearchResult;
-import com.menmasystems.menmudiscordbot.GuildData;
-import com.menmasystems.menmudiscordbot.Menmu;
-import com.menmasystems.menmudiscordbot.MenmuTrackData;
-import com.menmasystems.menmudiscordbot.MenmuTrackScheduler;
+import com.menmasystems.menmudiscordbot.*;
 import com.menmasystems.menmudiscordbot.errorhandlers.CommandExecutionException;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
 import com.sedmelluq.discord.lavaplayer.player.AudioLoadResultHandler;
@@ -12,7 +9,6 @@ import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
 import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
-import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandInteractionOption;
 import discord4j.core.object.command.ApplicationCommandInteractionOptionValue;
 import discord4j.core.spec.EmbedCreateSpec;
@@ -34,7 +30,7 @@ import java.util.List;
 public class PlayCommandHandler implements CommandHandler {
 
     @Override
-    public Mono<Void> handle(ChatInputInteractionEvent event) {
+    public Mono<Void> handle(MenmuCommandInteractionEvent event) {
         if(event.getInteraction().getGuildId().isEmpty())
             return Mono.error(new CommandExecutionException("play", "Guild ID is empty."));
 
@@ -95,7 +91,7 @@ public class PlayCommandHandler implements CommandHandler {
 
                     play(event, guildData).doOnError(e -> {
                         if(e instanceof CommandExecutionException)
-                            ((CommandExecutionException) e).createErrorMessage(event).subscribe();
+                            ((CommandExecutionException) e).createErrorMessage(event, true).subscribe();
                         String msg = ":no_entry_sign: Cannot auto start playing. Use command `play` to play manually.";
                         EmbedCreateSpec errorSpec = Menmu.createErrorEmbedSpec(msg, null);
                         event.createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(errorSpec).build()).block();
@@ -119,7 +115,7 @@ public class PlayCommandHandler implements CommandHandler {
 
                     play(event, guildData).doOnError(e -> {
                         if(e instanceof CommandExecutionException)
-                            ((CommandExecutionException) e).createErrorMessage(event).subscribe();
+                            ((CommandExecutionException) e).createErrorMessage(event, true).subscribe();
                         String msg = ":no_entry_sign: Cannot auto start playing. Use command `play` to play manually.";
                         EmbedCreateSpec errorSpec = Menmu.createErrorEmbedSpec(msg, null);
                         event.createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(errorSpec).build()).block();
@@ -158,7 +154,7 @@ public class PlayCommandHandler implements CommandHandler {
     }
 
     @Override
-    public void helpHandler(ChatInputInteractionEvent event) {
+    public void helpHandler(MenmuCommandInteractionEvent event) {
         final String title = "Command: `play`";
         final String description = "Adds a song or a playlist to the guild queue and starts playing if not already playing. " +
                 "Will also resume playing if previously paused.";
@@ -178,11 +174,11 @@ public class PlayCommandHandler implements CommandHandler {
                 .subscribe();
     }
 
-    private Mono<Void> play(ChatInputInteractionEvent event, GuildData guildData) {
+    private Mono<Void> play(MenmuCommandInteractionEvent event, GuildData guildData) {
         if (guildData.getVoiceConnection() == null) {
             return Menmu.getCommandHandler("join")
                     .cast(JoinCommandHandler.class)
-                    .flatMap(commandHandler -> commandHandler.internalHandle(event))
+                    .flatMap(commandHandler -> commandHandler.internalHandle(event, true))
                     .doOnSuccess(unused -> guildData.getTrackScheduler().play()).then();
         }
         return Mono.just(guildData.getTrackScheduler().play()).then();

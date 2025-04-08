@@ -2,9 +2,9 @@ package com.menmasystems.menmudiscordbot.commandhandlers;
 
 import com.menmasystems.menmudiscordbot.GuildData;
 import com.menmasystems.menmudiscordbot.Menmu;
+import com.menmasystems.menmudiscordbot.MenmuCommandInteractionEvent;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
-import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandInteractionOption;
 import discord4j.core.object.command.ApplicationCommandInteractionOptionValue;
 import discord4j.core.spec.EmbedCreateSpec;
@@ -24,9 +24,9 @@ import java.util.concurrent.TimeUnit;
 
 public class SeekCommandHandler implements CommandHandler {
     @Override
-    public Mono<Void> handle(ChatInputInteractionEvent event) {
+    public Mono<Void> handle(MenmuCommandInteractionEvent event) {
         if(event.getOption("timestamp").isEmpty()) {
-            return Menmu.sendErrorInteractionReply(event, ":no_entry_sign: No time specified.", null).then();
+            return event.sendErrorInteractionReply(":no_entry_sign: No time specified.", null);
         }
 
         return Mono.justOrEmpty(event.getInteraction().getGuildId())
@@ -35,7 +35,7 @@ public class SeekCommandHandler implements CommandHandler {
                 .map(AudioPlayer::getPlayingTrack)
                 .doOnNext(track -> {
                     if(!track.isSeekable()) {
-                        Menmu.sendErrorInteractionReply(event, ":no_entry_sign: The current playing track does not support seek.", null).subscribe();
+                        event.sendErrorInteractionReply(":no_entry_sign: The current playing track does not support seek.", null).subscribe();
                         return;
                     }
 
@@ -63,22 +63,22 @@ public class SeekCommandHandler implements CommandHandler {
                         long seekTo = TimeUnit.MILLISECONDS.convert(time, TimeUnit.SECONDS);
                         if(seekTo < track.getDuration()) {
                             track.setPosition(seekTo);
-                            Menmu.sendSuccessInteractionReply(event, String.format(":fast_forward: Seeking to `%02d:%02d:%02d`.", hour, minute, second)).subscribe();
+                            event.sendSuccessInteractionReply(String.format(":fast_forward: Seeking to `%02d:%02d:%02d`.", hour, minute, second)).subscribe();
                         } else {
-                            Menmu.sendErrorInteractionReply(event, ":no_entry_sign: Time inserted exceeds the duration of the track.", null).subscribe();
+                            event.sendErrorInteractionReply(":no_entry_sign: Time inserted exceeds the duration of the track.", null).subscribe();
                         }
                     } catch (NumberFormatException | DateTimeParseException e) {
-                        Menmu.sendErrorInteractionReply(event, ":no_entry_sign: Invalid timestamp. Required format: `minute:second` or `hour:minute:second`.", null).subscribe();
+                        event.sendErrorInteractionReply(":no_entry_sign: Invalid timestamp. Required format: `minute:second` or `hour:minute:second`.", null).subscribe();
                     }
                 }).doOnSuccess(track -> {
                     if(track == null) {
-                        Menmu.sendErrorInteractionReply(event, ":no_entry_sign: There is nothing playing right now.", null).subscribe();
+                        event.sendErrorInteractionReply(":no_entry_sign: There is nothing playing right now.", null).subscribe();
                     }
                 }).then();
     }
 
     @Override
-    public void helpHandler(ChatInputInteractionEvent event) {
+    public void helpHandler(MenmuCommandInteractionEvent event) {
         event.getClient().getSelf()
                 .map(self -> EmbedCreateSpec.builder()
                         .color(Menmu.DEFAULT_EMBED_COLOR)

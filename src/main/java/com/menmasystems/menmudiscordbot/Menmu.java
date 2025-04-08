@@ -17,17 +17,14 @@ import discord4j.core.event.domain.VoiceStateUpdateEvent;
 import discord4j.core.event.domain.guild.GuildCreateEvent;
 import discord4j.core.event.domain.guild.GuildDeleteEvent;
 import discord4j.core.event.domain.guild.GuildUpdateEvent;
-import discord4j.core.event.domain.interaction.ApplicationCommandInteractionEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.ReactionAddEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
-import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.spec.EmbedCreateSpec;
-import discord4j.core.spec.InteractionApplicationCommandCallbackSpec;
-import discord4j.core.spec.InteractionFollowupCreateSpec;
+import discord4j.core.spec.MessageCreateMono;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.rest.util.Color;
@@ -266,31 +263,14 @@ public class Menmu {
         return EmbedCreateSpec.builder().color(Color.GREEN).description(message).build();
     }
 
-    public static Mono<Message> sendSuccessInteractionReply(ApplicationCommandInteractionEvent event, String message, boolean followUp) {
-        if(followUp)
-            return Mono.just(createSuccessEmbedSpec(message))
-                    .map(embedSpec -> InteractionFollowupCreateSpec.builder().addEmbed(embedSpec).build())
-                    .flatMap(event::createFollowup);
+    public static MessageCreateMono sendErrorMessage(MessageChannel channel, String message, @Nullable String errorMessage) {
+        EmbedCreateSpec.Builder embedCreateSpecBuilder = EmbedCreateSpec.builder();
+        embedCreateSpecBuilder.color(Color.RED);
+        embedCreateSpecBuilder.description(message);
+        if(errorMessage != null)
+            embedCreateSpecBuilder.addField("Error Message", errorMessage, false);
 
-        return Mono.just(createSuccessEmbedSpec(message))
-                .map(embedSpec -> InteractionApplicationCommandCallbackSpec.builder().addEmbed(embedSpec).build())
-                .flatMap(event::reply)
-                .then(event.getReply());
-    }
-
-    public static Mono<Message> sendSuccessInteractionReply(ApplicationCommandInteractionEvent event, String message) {
-        return sendSuccessInteractionReply(event, message, false);
-    }
-
-    public static void sendErrorMessage(@Nullable MessageChannel channel, String message, @Nullable String errorMessage) {
-        if(channel != null) {
-            channel.createEmbed(embedCreateSpec -> {
-                embedCreateSpec.setColor(Color.RED);
-                embedCreateSpec.setDescription(message);
-                if(errorMessage != null)
-                    embedCreateSpec.addField("Error Message", errorMessage, false);
-            }).subscribe();
-        }
+        return channel.createMessage(embedCreateSpecBuilder.build());
     }
 
     public static EmbedCreateSpec createErrorEmbedSpec(String message, @Nullable String errorMessage) {
@@ -301,22 +281,6 @@ public class Menmu {
             spec.addField("Error Message", errorMessage, false);
 
         return spec.build();
-    }
-
-    public static Mono<Message> sendErrorInteractionReply(ApplicationCommandInteractionEvent event, String message, @Nullable String errorMessage, boolean followUp) {
-        if(followUp)
-            return Mono.just(createErrorEmbedSpec(message, errorMessage))
-                    .map(embedSpec -> InteractionFollowupCreateSpec.builder().addEmbed(embedSpec).build())
-                    .flatMap(event::createFollowup);
-
-        return Mono.just(createErrorEmbedSpec(message, errorMessage))
-                .map(embedSpec -> InteractionApplicationCommandCallbackSpec.builder().addEmbed(embedSpec).build())
-                .flatMap(event::reply)
-                .then(event.getReply());
-    }
-
-    public static Mono<Message> sendErrorInteractionReply(ApplicationCommandInteractionEvent event, String message, @Nullable String errorMessage) {
-        return sendErrorInteractionReply(event, message, errorMessage, false);
     }
 
     public static YoutubeSearch getYoutubeSearch() {

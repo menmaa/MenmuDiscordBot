@@ -182,7 +182,7 @@ public class MenmuTrackScheduler extends AudioEventAdapter {
     public void onTrackException(AudioPlayer player, AudioTrack track, FriendlyException exception) {
         MessageChannel channel = Menmu.getGuildData(getGuild().getId()).getBoundMessageChannel();
         String message = ":no_entry_sign: Eh... I'm sorry but I was unable to play `" + track.getInfo().title + "`. Skipping ahead.";
-        Menmu.sendErrorMessage(channel, message, exception.getMessage());
+        Menmu.sendErrorMessage(channel, message, exception.getMessage()).subscribe();
     }
 
     @Override

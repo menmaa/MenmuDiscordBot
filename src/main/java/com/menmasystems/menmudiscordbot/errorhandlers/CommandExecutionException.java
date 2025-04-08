@@ -4,6 +4,7 @@ import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.spec.EmbedCreateSpec;
+import discord4j.core.spec.InteractionApplicationCommandCallbackSpec;
 import discord4j.core.spec.InteractionFollowupCreateSpec;
 import discord4j.rest.util.Color;
 import org.slf4j.Logger;
@@ -81,7 +82,7 @@ public class CommandExecutionException extends Exception {
         return Mono.empty();
     }
 
-    public Mono<Message> createErrorMessage(ChatInputInteractionEvent event) {
+    public Mono<Message> createErrorMessage(ChatInputInteractionEvent event, boolean followUp) {
         if(errorType == null) return Mono.empty();
 
         EmbedCreateSpec.Builder specBuilder = EmbedCreateSpec.builder();
@@ -110,7 +111,16 @@ public class CommandExecutionException extends Exception {
                 break;
         }
 
-        InteractionFollowupCreateSpec spec = InteractionFollowupCreateSpec.builder().addEmbed(specBuilder.build()).build();
-        return event.createFollowup(spec);
+        if(followUp) {
+            InteractionFollowupCreateSpec spec = InteractionFollowupCreateSpec.builder().addEmbed(specBuilder.build()).build();
+            return event.createFollowup(spec);
+        }
+
+        InteractionApplicationCommandCallbackSpec spec = InteractionApplicationCommandCallbackSpec.builder().addEmbed(specBuilder.build()).build();
+        return event.reply(spec).then(event.getReply());
+    }
+
+    public Mono<Message> createErrorMessage(ChatInputInteractionEvent event) {
+        return createErrorMessage(event, false);
     }
 }
