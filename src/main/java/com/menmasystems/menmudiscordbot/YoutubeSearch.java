@@ -28,6 +28,7 @@ import java.util.Map;
  * Print a list of videos matching a search term.
  *
  * @author Jeremy Walker
+ * @author Menma
  */
 public class YoutubeSearch {
 
@@ -43,8 +44,10 @@ public class YoutubeSearch {
      * to make YouTube Data API requests.
      */
     private static YouTube youtube;
+    private final String youtubeApiKey;
 
-    YoutubeSearch() {
+    YoutubeSearch(String youtubeApiKey) {
+        this.youtubeApiKey = youtubeApiKey;
 
         try {
             // This object is used to make YouTube Data API requests. The last
@@ -67,7 +70,7 @@ public class YoutubeSearch {
             // Set your developer key from the {{ Google Cloud Console }} for
             // non-authenticated requests. See:
             // {{ https://cloud.google.com/console }}
-            search.setKey(Menmu.getConfig().youtubeApiKey);
+            search.setKey(youtubeApiKey);
             search.setQ(queryTerm);
 
             // Restrict the search results to only include videos. See:
@@ -83,7 +86,7 @@ public class YoutubeSearch {
             SearchListResponse searchResponse = search.execute();
             List<SearchResult> searchResultList = searchResponse.getItems();
 
-            if (searchResultList.size() > 0) {
+            if (!searchResultList.isEmpty()) {
                 SearchResult sr = searchResultList.get(0);
                 ResourceId rId = sr.getId();
 
@@ -100,13 +103,13 @@ public class YoutubeSearch {
     public VideoSnippet getYtVideoDataById(String videoId) {
         try {
             YouTube.Videos.List videos = youtube.videos().list("snippet");
-            videos.setKey(Menmu.getConfig().youtubeApiKey);
+            videos.setKey(youtubeApiKey);
             videos.setId(videoId);
             videos.setFields("items(kind,snippet/title,snippet/channelTitle,snippet/thumbnails/default/url)");
             VideoListResponse videoListResponse = videos.execute();
             List<Video> videoList = videoListResponse.getItems();
 
-            if(videoList.size() > 0) {
+            if(!videoList.isEmpty()) {
                 Video video = videoList.get(0);
 
                 if(video.getKind().equals("youtube#video")) {
@@ -122,13 +125,13 @@ public class YoutubeSearch {
     public Map<String, PlaylistItemSnippet> getYtVideoPlaylistById(String playlistId) {
         try {
             YouTube.PlaylistItems.List playlistItems = youtube.playlistItems().list("snippet");
-            playlistItems.setKey(Menmu.getConfig().youtubeApiKey);
+            playlistItems.setKey(youtubeApiKey);
             playlistItems.setPlaylistId(playlistId);
             playlistItems.setFields("items(snippet/thumbnails/default/url,snippet/channelTitle,snippet/resourceId)");
             PlaylistItemListResponse playlistItemListResponse = playlistItems.execute();
             List<PlaylistItem> playlistItemList = playlistItemListResponse.getItems();
 
-            if(playlistItemList.size() > 0) {
+            if(!playlistItemList.isEmpty()) {
                 Map<String, PlaylistItemSnippet> playlistItemMap = new HashMap<>();
                 for(PlaylistItem playlistItem : playlistItemList) {
                     if(playlistItem.getSnippet().getResourceId().getKind().equals("youtube#video")) {

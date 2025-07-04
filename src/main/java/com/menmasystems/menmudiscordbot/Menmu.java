@@ -28,6 +28,8 @@ import discord4j.core.spec.MessageCreateMono;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.rest.util.Color;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
@@ -59,30 +61,35 @@ public class Menmu {
     private static GatewayDiscordClient discordGateway;
     private static AudioPlayerManager playerManager;
     private static YoutubeSearch youtubeSearch;
-    private static Configuration config;
     private static final Map<Snowflake, GuildData> connectedGuilds = new HashMap<>();
     private static final Map<String, CommandHandler> commandHandlers = new HashMap<>();
     private static final ScheduledExecutorService gpScheduledExecutor = Executors.newSingleThreadScheduledExecutor();
+    private static final Logger logger = LoggerFactory.getLogger(Menmu.class);
 
     public static void main(String[] args) {
-        try {
-            FileReader fileReader = new FileReader("config.json");
-            config = new Gson().fromJson(fileReader, Configuration.class);
-        } catch (IOException e) {
-            System.err.println("ERROR: Unable to read from configuration file (config.json). " + e.getMessage());
+        String botToken = System.getenv("BOT_TOKEN");
+        if(botToken == null) {
+            logger.error("BOT_TOKEN environment variable is required.");
+            return;
+        }
+
+        String youtubeApiKey = System.getenv("YT_API_KEY");
+        if(youtubeApiKey == null) {
+            logger.error("YT_API_KEY environment variable is required.");
             return;
         }
 
         registerCommandHandlers();
 
-        youtubeSearch = new YoutubeSearch();
+        youtubeSearch = new YoutubeSearch(youtubeApiKey);
         playerManager = new DefaultAudioPlayerManager();
         YoutubeAudioSourceManager ytAudioSourceManager = new YoutubeAudioSourceManager(new Music(), new Web(), new WebEmbedded(), new Tv(), new TvHtml5Embedded());
-        ytAudioSourceManager.useOauth2(getConfig().ytOAuth2RefreshToken, false);
+        String ytOAuth2RefreshToken = System.getenv("YT_OAUTH2_REFRESH_TOKEN");
+        ytAudioSourceManager.useOauth2(ytOAuth2RefreshToken, true);
         playerManager.registerSourceManager(ytAudioSourceManager);
         AudioSourceManagers.registerRemoteSources(getPlayerManager(), com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.class);
 
-        discordGateway = Objects.requireNonNull(DiscordClient.create(getConfig().botToken).login().block());
+        discordGateway = Objects.requireNonNull(DiscordClient.create(botToken).login().block());
         getDiscordGateway().on(ReadyEvent.class).subscribe(new ReadyEventHandler());
         getDiscordGateway().on(GuildCreateEvent.class).subscribe(new GuildCreateEventHandler());
         getDiscordGateway().on(GuildDeleteEvent.class).subscribe(new GuildDeleteEventHandler());
@@ -232,10 +239,6 @@ public class Menmu {
 
     public static AudioPlayerManager getPlayerManager() {
         return playerManager;
-    }
-
-    public static Configuration getConfig() {
-        return config;
     }
 
     public static GuildData getGuildData(Snowflake guildId) {
