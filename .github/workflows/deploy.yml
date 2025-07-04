@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  AWS_REGION: eu-central-1
+  AWS_REGION: us-east-1
   ECR_REPOSITORY_NAME: menmu-discord-bot
   ECR_IMAGE_TAG: latest
 
