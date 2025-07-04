@@ -1,6 +1,7 @@
-/out/
-/.gradle/
-/.idea/
-/META-INF/
+/out
+/.gradle
+/.idea
+/build
+/cache
 /config.json
 /menmu.log
