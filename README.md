@@ -8,7 +8,7 @@ A mostly music discord bot written in Java using the Discord4J library.
 
 ## Installation
 
-For easy installation you can use `Docker` to download the image from Amazon ECR like below:
+For easy installation you can use [Docker](https://docker.com) to download the image from Amazon ECR like below:
 
 ```bash
 docker pull public.ecr.aws/i4h9h7p4/menmu-discord-bot:latest
@@ -21,7 +21,7 @@ To run the bot you need to set the following environment variables:
 - `BOT_TOKEN` - Discord Bot Token
 - `YT_API_KEY` - Youtube API Key
 
-After setting them, run the docker container image:
+After setting them, run the docker image:
 
 ```bash
 docker run -d -e BOT_TOKEN -e YT_API_KEY public.ecr.aws/i4h9h7p4/menmu-discord-bot:latest
