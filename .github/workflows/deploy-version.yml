@@ -3,7 +3,7 @@ name: Build, Upload to AWS ECR and Deploy with CloudFormation
 on:
   push:
     tags:
-      - *
+      - '*'
 
 env:
   AWS_REGION: eu-central-1
@@ -83,8 +83,8 @@ jobs:
       - name: Retrieve AWS VPC Subnets and Security Groups
         id: vpc
         run: |
-          echo "subnets=$(aws ec2 describe-subnets --filters Name=vpc-id,Values=${{ vars.AWS_VPC_ID }} --query 'Subnets[].SubnetId')" >> $GITHUB_OUTPUT
-          echo "security_groups=$(aws ec2 describe-security-groups --filters Name=vpc-id,Values=${{ vars.AWS_VPC_ID }} --query 'SecurityGroups[].GroupId')" >> $GITHUB_OUTPUT
+          echo subnets=$(aws ec2 describe-subnets --filters Name=vpc-id,Values=${{ vars.AWS_VPC_ID }} --query "Subnets[].SubnetId | join(',', @)") >> $GITHUB_OUTPUT
+          echo security_groups=$(aws ec2 describe-security-groups --filters Name=vpc-id,Values=${{ vars.AWS_VPC_ID }} --query "SecurityGroups[].GroupId | join(',', @)") >> $GITHUB_OUTPUT
 
       - name: Deploy to AWS ECS using CloudFormation
         uses: aws-actions/aws-cloudformation-github-deploy@v1
