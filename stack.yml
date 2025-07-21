@@ -1,0 +1,99 @@
+Parameters:
+  ImageVersion:
+    Description: The Image version to pull from the ECR.
+    Type: String
+    Default: latest
+  BotTokenArn:
+    Description: The Bot Token ARN From SSM Parameter Store or Secrets Manager.
+    Type: String
+  YoutubeApiTokenArn:
+    Description: The Youtube API Key ARN From SSM Parameter Store or Secrets Manager.
+    Type: String
+  YtOAuth2RefreshTokenArn:
+    Description: The Youtube OAuth2 Refresh Token ARN From SSM Parameter Store or Secrets Manager.
+    Type: String
+  Subnets:
+    Description: List of subnet IDs to use for the ECS service.
+    Type: List<AWS::EC2::Subnet::Id>
+  SecurityGroups:
+    Description: List of security group IDs to use for the ECS service.
+    Type: List<AWS::EC2::SecurityGroup::Id>
+
+Resources:
+  MenmuCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: MenmuCluster
+      CapacityProviders:
+        - FARGATE_SPOT
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: FARGATE_SPOT
+          Weight: 1
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ecsTaskExecutionRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: AmazonSSMGetParameterForMenmuBot
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: ssm:GetParameters
+                Resource:
+                  - !Ref BotTokenArn
+                  - !Ref YoutubeApiTokenArn
+                  - !Ref YtOAuth2RefreshTokenArn
+  MenmuTaskDef:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: menmu-main-task
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: '256'
+      Memory: '512'
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: menmu-discord-bot
+          Image: !Sub public.ecr.aws/i4h9h7p4/menmu-discord-bot:${ImageVersion}
+          Essential: true
+          Secrets:
+            - Name: BOT_TOKEN
+              ValueFrom: !Ref BotTokenArn
+            - Name: YT_API_KEY
+              ValueFrom: !Ref YoutubeApiTokenArn
+            - Name: YT_OAUTH2_REFRESH_TOKEN
+              ValueFrom: !Ref YtOAuth2RefreshTokenArn
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref MenmuLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+  MenmuLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/menmu-main-task
+      RetentionInDays: 1
+  MenmuService:
+    Type: AWS::ECS::Service
+    DependsOn: MenmuTaskDef
+    Properties:
+      Cluster: !Ref MenmuCluster
+      DesiredCount: 1
+      TaskDefinition: !Ref MenmuTaskDef
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets: !Ref Subnets
+          SecurityGroups: !Ref SecurityGroups

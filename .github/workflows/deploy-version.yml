@@ -1,0 +1,101 @@
+name: Build, Upload to AWS ECR and Deploy with CloudFormation
+
+on:
+  push:
+    tags:
+      - *
+
+env:
+  AWS_REGION: eu-central-1
+  ECR_REGISTRY_ALIAS: i4h9h7p4
+  ECR_REPOSITORY_NAME: menmu-discord-bot
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: Production
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '18'
+          distribution: 'corretto'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build with Gradle
+        run: ./gradlew build
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registry-type: public
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REGISTRY_ALIAS }}/${{ env.ECR_REPOSITORY_NAME }}:${{ github.ref_name }}
+          platforms: linux/amd64
+          provenance: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment: Production
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Retrieve AWS VPC Subnets and Security Groups
+        id: vpc
+        run: |
+          echo "subnets=$(aws ec2 describe-subnets --filters Name=vpc-id,Values=${{ vars.AWS_VPC_ID }} --query 'Subnets[].SubnetId')" >> $GITHUB_OUTPUT
+          echo "security_groups=$(aws ec2 describe-security-groups --filters Name=vpc-id,Values=${{ vars.AWS_VPC_ID }} --query 'SecurityGroups[].GroupId')" >> $GITHUB_OUTPUT
+
+      - name: Deploy to AWS ECS using CloudFormation
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: MenmuDiscordBotStack
+          template: stack.yml
+          no-fail-on-empty-changeset: "1"
+          parameter-overrides: >-
+            ImageVersion=${{ github.ref_name }}
+            BotTokenArn=${{ vars.BOT_TOKEN_ARN }}
+            YoutubeApiTokenArn=${{ vars.YT_API_TOKEN_ARN }}
+            YtOAuth2RefreshTokenArn=${{ vars.YT_OAUTH2_REFRESH_TOKEN_ARN }}
+            Subnets=${{ steps.vpc.outputs.subnets }}
+            SecurityGroups=${{ steps.vpc.outputs.security_groups }}
