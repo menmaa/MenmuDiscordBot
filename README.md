@@ -30,5 +30,5 @@ docker run -d -e BOT_TOKEN -e YT_API_KEY public.ecr.aws/menma/menmu-discord-bot:
 Or directly assign the variables on the command:
 
 ```bash
-docker run -d -e BOT_TOKEN=YourBotToken -e YT_API_KEY=YourYoutubeApiKey public.ecr.aws/i4h9h7p4/menmu-discord-bot:latest
+docker run -d -e BOT_TOKEN=YourBotToken -e YT_API_KEY=YourYoutubeApiKey public.ecr.aws/menma/menmu-discord-bot:latest
 ```
