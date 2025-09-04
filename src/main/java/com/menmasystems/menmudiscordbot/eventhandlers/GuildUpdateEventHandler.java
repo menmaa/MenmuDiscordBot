@@ -18,7 +18,7 @@ public class GuildUpdateEventHandler implements Consumer<GuildUpdateEvent> {
     @Override
     public void accept(GuildUpdateEvent guildUpdateEvent) {
         Guild guild = guildUpdateEvent.getCurrent();
-        Menmu.getGuildData(guild.getId()).setGuild(guild);
-        Menmu.getGuildData(guild.getId()).getTrackScheduler().setGuild(guild);
+        Menmu.getGuildManager(guild.getId()).setGuild(guild);
+        Menmu.getGuildManager(guild.getId()).getTrackScheduler().setGuild(guild);
     }
 }

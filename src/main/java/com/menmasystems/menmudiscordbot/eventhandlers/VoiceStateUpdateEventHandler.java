@@ -1,9 +1,11 @@
 package com.menmasystems.menmudiscordbot.eventhandlers;
 
-import com.menmasystems.menmudiscordbot.GuildData;
-import com.menmasystems.menmudiscordbot.Menmu;
+import com.menmasystems.menmudiscordbot.Managers;
+import com.menmasystems.menmudiscordbot.manager.GuildManager;
 import discord4j.core.event.domain.VoiceStateUpdateEvent;
 import discord4j.core.object.VoiceState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.function.Consumer;
 
@@ -17,16 +19,21 @@ import java.util.function.Consumer;
 
 public class VoiceStateUpdateEventHandler implements Consumer<VoiceStateUpdateEvent> {
 
+    private final Logger logger = LoggerFactory.getLogger(VoiceStateUpdateEventHandler.class);
+
     @Override
     public void accept(VoiceStateUpdateEvent voiceStateUpdateEvent) {
         VoiceState current = voiceStateUpdateEvent.getCurrent();
-        if(current.getUserId().equals(current.getClient().getSelfId())) {
-            if(voiceStateUpdateEvent.getOld().isEmpty()) return;
-            VoiceState old = voiceStateUpdateEvent.getOld().get();
-            if(current.getChannelId().isEmpty() && old.getChannelId().isPresent()) {
-                GuildData guildData = Menmu.getGuildData(current.getGuildId());
-                guildData.setVoiceConnection(null).then(guildData.setBoundMessageChannel(null));
-            }
+
+        if(!current.getUserId().equals(current.getClient().getSelfId())) return;
+        if(voiceStateUpdateEvent.getOld().isEmpty()) return;
+
+        VoiceState old = voiceStateUpdateEvent.getOld().get();
+        if(current.getChannelId().isEmpty() && old.getChannelId().isPresent()) {
+            GuildManager guildManager = Managers.getGuildManager(current.getGuildId());
+            guildManager.setVoiceConnection(null);
+            guildManager.setBoundMessageChannel(null);
+            logger.info("Left voice channel {} due to VoiceStateUpdateEvent.", old.getChannelId().get().asLong());
         }
     }
 }

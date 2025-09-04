@@ -1,13 +1,12 @@
 package com.menmasystems.menmudiscordbot.commandhandlers;
 
-import com.menmasystems.menmudiscordbot.GuildData;
 import com.menmasystems.menmudiscordbot.Menmu;
 import com.menmasystems.menmudiscordbot.MenmuCommandInteractionEvent;
 import com.menmasystems.menmudiscordbot.MenmuTrackScheduler;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
+import com.menmasystems.menmudiscordbot.manager.GuildManager;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.core.spec.InteractionApplicationCommandCallbackSpec;
-import discord4j.rest.util.Color;
 import reactor.core.publisher.Mono;
 
 /**
@@ -22,8 +21,8 @@ public class ClearCommandHandler implements CommandHandler {
     @Override
     public Mono<Void> handle(MenmuCommandInteractionEvent event) {
         return Mono.justOrEmpty(event.getInteraction().getGuildId())
-                .map(Menmu::getGuildData)
-                .map(GuildData::getTrackScheduler)
+                .map(Menmu::getGuildManager)
+                .map(GuildManager::getTrackScheduler)
                 .map(MenmuTrackScheduler::purgeQueue)
                 .then(event.sendSuccessInteractionReply(":white_check_mark: Music queue purged."));
     }

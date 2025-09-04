@@ -1,10 +1,10 @@
 package com.menmasystems.menmudiscordbot.commandhandlers;
 
-import com.menmasystems.menmudiscordbot.GuildData;
 import com.menmasystems.menmudiscordbot.Menmu;
 import com.menmasystems.menmudiscordbot.MenmuCommandInteractionEvent;
 import com.menmasystems.menmudiscordbot.errorhandlers.InvalidQueuePositionException;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
+import com.menmasystems.menmudiscordbot.manager.GuildManager;
 import discord4j.core.object.command.ApplicationCommandInteractionOption;
 import discord4j.core.object.command.ApplicationCommandInteractionOptionValue;
 import discord4j.core.spec.EmbedCreateSpec;
@@ -34,8 +34,8 @@ public class RemoveCommandHandler implements CommandHandler {
             }
 
             return Mono.justOrEmpty(event.getInteraction().getGuildId())
-                    .map(Menmu::getGuildData)
-                    .map(GuildData::getTrackScheduler)
+                    .map(Menmu::getGuildManager)
+                    .map(GuildManager::getTrackScheduler)
                     .flatMap(trackScheduler -> trackScheduler.removeQueue((int) position))
                     .doOnSuccess(removed -> {
                         String msg = ":no_entry: Track `%s` has been removed from the music queue.";

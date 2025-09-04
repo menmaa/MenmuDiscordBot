@@ -1,8 +1,12 @@
 package com.menmasystems.menmudiscordbot.commandhandlers;
 
-import com.menmasystems.menmudiscordbot.*;
+import com.menmasystems.menmudiscordbot.Menmu;
+import com.menmasystems.menmudiscordbot.MenmuCommandInteractionEvent;
+import com.menmasystems.menmudiscordbot.MenmuTrackData;
+import com.menmasystems.menmudiscordbot.MenmuTrackScheduler;
 import com.menmasystems.menmudiscordbot.errorhandlers.CommandExecutionException;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
+import com.menmasystems.menmudiscordbot.manager.GuildManager;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.tools.Units;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
@@ -31,10 +35,10 @@ public class QueueCommandHandler implements CommandHandler {
         if(event.getInteraction().getGuildId().isEmpty())
             return Mono.error(new CommandExecutionException("play", "Guild ID is empty."));
 
-        GuildData guildData = Menmu.getGuildData(event.getInteraction().getGuildId().get());
-        AudioPlayer player = guildData.getAudioPlayer();
-        MenmuTrackScheduler trackScheduler = guildData.getTrackScheduler();
-        List<AudioTrack> rTrackList = guildData.getQueueOnRepeat();
+        GuildManager guildManager = Menmu.getGuildManager(event.getInteraction().getGuildId().get());
+        AudioPlayer player = guildManager.getAudioPlayer();
+        MenmuTrackScheduler trackScheduler = guildManager.getTrackScheduler();
+        List<AudioTrack> rTrackList = guildManager.getQueueOnRepeat();
         List<AudioTrack> trackList = (rTrackList != null) ? new LinkedList<>(rTrackList) : trackScheduler.getQueueAsList();
 
         final AudioTrack np = player.getPlayingTrack();
@@ -47,13 +51,13 @@ public class QueueCommandHandler implements CommandHandler {
             return Mono.empty();
         }
 
-        Guild guild = guildData.getGuild();
+        Guild guild = guildManager.getGuild();
         int pages = (int) Math.ceil(trackList.size() / 10.0);
 
-        if(guildData.getMusicQueueMessage() != null) {
-            guildData.getMusicQueueMessage().removeAllReactions().subscribe();
-            guildData.setMusicQueueMessage(null);
-            guildData.setMusicQueuePage(0);
+        if(guildManager.getMusicQueueMessage() != null) {
+            guildManager.getMusicQueueMessage().removeAllReactions().subscribe();
+            guildManager.setMusicQueueMessage(null);
+            guildManager.setMusicQueuePage(0);
         }
 
         EmbedCreateSpec.Builder spec = EmbedCreateSpec.builder();
@@ -129,8 +133,8 @@ public class QueueCommandHandler implements CommandHandler {
                         message.addReaction(ReactionEmoji.unicode("⬅️")).subscribe();
                         message.addReaction(ReactionEmoji.unicode("➡️")).subscribe();
 
-                        guildData.setMusicQueueMessage(message);
-                        guildData.setMusicQueuePage(1);
+                        guildManager.setMusicQueueMessage(message);
+                        guildManager.setMusicQueuePage(1);
                     }
                 }).then();
     }

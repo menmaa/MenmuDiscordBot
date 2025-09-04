@@ -3,6 +3,7 @@ package com.menmasystems.menmudiscordbot;
 import com.google.api.services.youtube.model.VideoSnippet;
 import com.menmasystems.menmudiscordbot.errorhandlers.InvalidQueuePositionException;
 import com.menmasystems.menmudiscordbot.errorhandlers.MusicQueueEmptyException;
+import com.menmasystems.menmudiscordbot.manager.GuildManager;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.player.event.AudioEventAdapter;
 import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
@@ -45,9 +46,9 @@ public class MenmuTrackScheduler extends AudioEventAdapter {
     public MenmuTrackScheduler play() {
         if(audioPlayer.getPlayingTrack() == null) {
             AudioTrack next = queue.poll();
-            GuildData guildData = Menmu.getGuildData(guild.getId());
-            if(next == null && guildData.getQueueOnRepeat() != null) {
-                List<AudioTrack> repeatingQueue = Menmu.getGuildData(guild.getId()).getQueueOnRepeat();
+            GuildManager guildManager = Menmu.getGuildManager(guild.getId());
+            if(next == null && guildManager.getQueueOnRepeat() != null) {
+                List<AudioTrack> repeatingQueue = Menmu.getGuildManager(guild.getId()).getQueueOnRepeat();
                 for(AudioTrack track : repeatingQueue) {
                     queue.offer(track.makeClone());
                 }
@@ -95,7 +96,7 @@ public class MenmuTrackScheduler extends AudioEventAdapter {
     public void queue(AudioTrack track) {
         queue.offer(track);
 
-        List<AudioTrack> repeatingQueue = Menmu.getGuildData(guild.getId()).getQueueOnRepeat();
+        List<AudioTrack> repeatingQueue = Menmu.getGuildManager(guild.getId()).getQueueOnRepeat();
         if(repeatingQueue != null)
             repeatingQueue.add(track);
     }
@@ -103,7 +104,7 @@ public class MenmuTrackScheduler extends AudioEventAdapter {
     public MenmuTrackScheduler purgeQueue() {
         queue.clear();
 
-        List<AudioTrack> repeatingQueue = Menmu.getGuildData(guild.getId()).getQueueOnRepeat();
+        List<AudioTrack> repeatingQueue = Menmu.getGuildManager(guild.getId()).getQueueOnRepeat();
         if(repeatingQueue != null)
             repeatingQueue.clear();
 
@@ -117,7 +118,7 @@ public class MenmuTrackScheduler extends AudioEventAdapter {
     @Override
     public void onTrackStart(AudioPlayer player, AudioTrack track) {
         MenmuTrackData trackData = track.getUserData(MenmuTrackData.class);
-        if(!trackData.onRepeat && Menmu.getGuildData(guild.getId()).getQueueOnRepeat() == null) {
+        if(!trackData.onRepeat && Menmu.getGuildManager(guild.getId()).getQueueOnRepeat() == null) {
             if(track.getSourceManager().getSourceName().equals("youtube") && !trackData.ytInfoFetched) {
                 trackData.url = "https://www.youtube.com/watch?v=" + track.getIdentifier();
                 VideoSnippet snippet = Menmu.getYoutubeSearch().getYtVideoDataById(track.getIdentifier());
@@ -128,7 +129,7 @@ public class MenmuTrackScheduler extends AudioEventAdapter {
                 }
             }
 
-            MessageChannel channel = Menmu.getGuildData(getGuild().getId()).getBoundMessageChannel();
+            MessageChannel channel = Menmu.getGuildManager(getGuild().getId()).getBoundMessageChannel();
 
             long length = track.getInfo().length;
             String duration;
@@ -160,14 +161,14 @@ public class MenmuTrackScheduler extends AudioEventAdapter {
     public void onTrackEnd(AudioPlayer player, AudioTrack track, AudioTrackEndReason endReason) {
         MenmuTrackData trackData = track.getUserData(MenmuTrackData.class);
         if(endReason.mayStartNext) {
-            GuildData guildData = Menmu.getGuildData(guild.getId());
-            if(guildData.isRepeatCurrentTrack()) {
+            GuildManager guildManager = Menmu.getGuildManager(guild.getId());
+            if(guildManager.isRepeatCurrentTrack()) {
                 trackData.onRepeat = true;
                 player.startTrack(track.makeClone(), false);
             } else {
                 AudioTrack next = queue.poll();
-                if(next == null && guildData.getQueueOnRepeat() != null) {
-                    List<AudioTrack> repeatingQueue = Menmu.getGuildData(guild.getId()).getQueueOnRepeat();
+                if(next == null && guildManager.getQueueOnRepeat() != null) {
+                    List<AudioTrack> repeatingQueue = Menmu.getGuildManager(guild.getId()).getQueueOnRepeat();
                     for(AudioTrack rTrack : repeatingQueue) {
                         queue.offer(rTrack.makeClone());
                     }
@@ -180,7 +181,7 @@ public class MenmuTrackScheduler extends AudioEventAdapter {
 
     @Override
     public void onTrackException(AudioPlayer player, AudioTrack track, FriendlyException exception) {
-        MessageChannel channel = Menmu.getGuildData(getGuild().getId()).getBoundMessageChannel();
+        MessageChannel channel = Menmu.getGuildManager(getGuild().getId()).getBoundMessageChannel();
         String message = ":no_entry_sign: Eh... I'm sorry but I was unable to play `" + track.getInfo().title + "`. Skipping ahead.";
         Menmu.sendErrorMessage(channel, message, exception.getMessage()).subscribe();
     }
@@ -191,8 +192,8 @@ public class MenmuTrackScheduler extends AudioEventAdapter {
     }
 
     public Mono<AudioTrack> removeQueue(int position) {
-        GuildData guildData = Menmu.getGuildData(guild.getId());
-        List<AudioTrack> audioTracks = guildData.getQueueOnRepeat();
+        GuildManager guildManager = Menmu.getGuildManager(guild.getId());
+        List<AudioTrack> audioTracks = guildManager.getQueueOnRepeat();
 
         if(audioTracks == null)
             audioTracks = getQueueAsList();
@@ -206,8 +207,8 @@ public class MenmuTrackScheduler extends AudioEventAdapter {
             if(track.getState() != AudioTrackState.INACTIVE) continue;
             queue.offer(track);
         }
-        if(guildData.getQueueOnRepeat() != null) {
-            guildData.setQueueOnRepeat(audioTracks);
+        if(guildManager.getQueueOnRepeat() != null) {
+            guildManager.setQueueOnRepeat(audioTracks);
         }
         return Mono.just(removed);
     }

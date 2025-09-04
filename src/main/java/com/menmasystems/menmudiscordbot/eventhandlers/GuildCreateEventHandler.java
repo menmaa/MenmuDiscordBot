@@ -1,8 +1,8 @@
 package com.menmasystems.menmudiscordbot.eventhandlers;
 
-import com.menmasystems.menmudiscordbot.GuildData;
 import com.menmasystems.menmudiscordbot.Menmu;
 import com.menmasystems.menmudiscordbot.MenmuTrackScheduler;
+import com.menmasystems.menmudiscordbot.manager.GuildManager;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import discord4j.core.event.domain.guild.GuildCreateEvent;
 import discord4j.core.object.entity.Guild;
@@ -24,6 +24,6 @@ public class GuildCreateEventHandler implements Consumer<GuildCreateEvent> {
         AudioPlayer player = Menmu.getPlayerManager().createPlayer();
         MenmuTrackScheduler trackScheduler = new MenmuTrackScheduler(guild, player);
         player.addListener(trackScheduler);
-        Menmu.addConnectedGuild(guild.getId(), new GuildData(guild, player, trackScheduler));
+        Menmu.addConnectedGuild(guild.getId(), new GuildManager(guild, player, trackScheduler));
     }
 }

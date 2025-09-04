@@ -20,7 +20,7 @@ public class RepeatCommandHandler implements CommandHandler {
     public Mono<Void> handle(MenmuCommandInteractionEvent event) {
 
         return Mono.justOrEmpty(event.getInteraction().getGuildId())
-                .map(Menmu::getGuildData)
+                .map(Menmu::getGuildManager)
                 .map(guildData -> {
                     InteractionApplicationCommandCallbackSpec.Builder specBuilder =
                             InteractionApplicationCommandCallbackSpec.builder();

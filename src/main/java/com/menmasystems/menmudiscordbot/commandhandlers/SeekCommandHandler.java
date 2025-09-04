@@ -1,9 +1,9 @@
 package com.menmasystems.menmudiscordbot.commandhandlers;
 
-import com.menmasystems.menmudiscordbot.GuildData;
 import com.menmasystems.menmudiscordbot.Menmu;
 import com.menmasystems.menmudiscordbot.MenmuCommandInteractionEvent;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
+import com.menmasystems.menmudiscordbot.manager.GuildManager;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import discord4j.core.object.command.ApplicationCommandInteractionOption;
 import discord4j.core.object.command.ApplicationCommandInteractionOptionValue;
@@ -30,8 +30,8 @@ public class SeekCommandHandler implements CommandHandler {
         }
 
         return Mono.justOrEmpty(event.getInteraction().getGuildId())
-                .map(Menmu::getGuildData)
-                .map(GuildData::getAudioPlayer)
+                .map(Menmu::getGuildManager)
+                .map(GuildManager::getAudioPlayer)
                 .map(AudioPlayer::getPlayingTrack)
                 .doOnNext(track -> {
                     if(!track.isSeekable()) {

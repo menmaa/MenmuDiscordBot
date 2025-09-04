@@ -1,12 +1,12 @@
 package com.menmasystems.menmudiscordbot.commandhandlers;
 
-import com.menmasystems.menmudiscordbot.GuildData;
 import com.menmasystems.menmudiscordbot.Menmu;
 import com.menmasystems.menmudiscordbot.MenmuCommandInteractionEvent;
 import com.menmasystems.menmudiscordbot.MenmuTrackScheduler;
 import com.menmasystems.menmudiscordbot.errorhandlers.InvalidQueuePositionException;
 import com.menmasystems.menmudiscordbot.errorhandlers.MusicQueueEmptyException;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
+import com.menmasystems.menmudiscordbot.manager.GuildManager;
 import discord4j.core.object.command.ApplicationCommandInteractionOption;
 import discord4j.core.object.command.ApplicationCommandInteractionOptionValue;
 import discord4j.core.spec.EmbedCreateSpec;
@@ -26,8 +26,8 @@ public class SkipCommandHandler implements CommandHandler {
     public Mono<Void> handle(MenmuCommandInteractionEvent event) {
         if(event.getOption("position").isEmpty()) {
             return Mono.justOrEmpty(event.getInteraction().getGuildId())
-                    .map(Menmu::getGuildData)
-                    .map(GuildData::getTrackScheduler)
+                    .map(Menmu::getGuildManager)
+                    .map(GuildManager::getTrackScheduler)
                     .flatMap(MenmuTrackScheduler::skip)
                     .doOnSuccess(unused -> event.sendSuccessInteractionReply(":white_check_mark: Song skipped!").subscribe())
                     .doOnError(MusicQueueEmptyException.class, error -> event.sendErrorInteractionReply(":no_entry_sign: Queue is empty!", null).subscribe()).then();
@@ -44,8 +44,8 @@ public class SkipCommandHandler implements CommandHandler {
                 }
 
                 return Mono.justOrEmpty(event.getInteraction().getGuildId())
-                        .map(Menmu::getGuildData)
-                        .map(GuildData::getTrackScheduler)
+                        .map(Menmu::getGuildManager)
+                        .map(GuildManager::getTrackScheduler)
                         .flatMap(trackScheduler -> trackScheduler.skipTo((int) position))
                         .doOnSuccess(unused -> {
                             event.sendSuccessInteractionReply(":white_check_mark: Skipped to position " + position + " in queue.").subscribe();

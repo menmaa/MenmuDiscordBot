@@ -1,10 +1,10 @@
 package com.menmasystems.menmudiscordbot;
 
-import com.google.gson.Gson;
 import com.menmasystems.menmudiscordbot.commandhandlers.*;
 import com.menmasystems.menmudiscordbot.errorhandlers.UnknownCommandException;
 import com.menmasystems.menmudiscordbot.eventhandlers.*;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
+import com.menmasystems.menmudiscordbot.manager.GuildManager;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers;
@@ -33,8 +33,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -61,7 +59,7 @@ public class Menmu {
     private static GatewayDiscordClient discordGateway;
     private static AudioPlayerManager playerManager;
     private static YoutubeSearch youtubeSearch;
-    private static final Map<Snowflake, GuildData> connectedGuilds = new HashMap<>();
+    private static final Map<Snowflake, GuildManager> connectedGuilds = new HashMap<>();
     private static final Map<String, CommandHandler> commandHandlers = new HashMap<>();
     private static final ScheduledExecutorService gpScheduledExecutor = Executors.newSingleThreadScheduledExecutor();
     private static final Logger logger = LoggerFactory.getLogger(Menmu.class);
@@ -241,11 +239,11 @@ public class Menmu {
         return playerManager;
     }
 
-    public static GuildData getGuildData(Snowflake guildId) {
+    public static GuildManager getGuildManager(Snowflake guildId) {
         return connectedGuilds.get(guildId);
     }
 
-    public static void addConnectedGuild(Snowflake guildId, GuildData data) {
+    public static void addConnectedGuild(Snowflake guildId, GuildManager data) {
         connectedGuilds.put(guildId, data);
     }
 

@@ -23,7 +23,7 @@ public class RepeatQueueCommandHandler implements CommandHandler {
     @Override
     public Mono<Void> handle(MenmuCommandInteractionEvent event) {
         return Mono.justOrEmpty(event.getInteraction().getGuildId())
-                .map(Menmu::getGuildData)
+                .map(Menmu::getGuildManager)
                 .doOnNext(guildData -> {
                     if(guildData.getQueueOnRepeat() == null) {
                         AudioTrack np = guildData.getAudioPlayer().getPlayingTrack();

@@ -1,9 +1,9 @@
 package com.menmasystems.menmudiscordbot.eventhandlers;
 
-import com.menmasystems.menmudiscordbot.GuildData;
 import com.menmasystems.menmudiscordbot.Menmu;
 import com.menmasystems.menmudiscordbot.MenmuTrackData;
 import com.menmasystems.menmudiscordbot.MenmuTrackScheduler;
+import com.menmasystems.menmudiscordbot.manager.GuildManager;
 import com.sedmelluq.discord.lavaplayer.tools.Units;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import discord4j.core.event.domain.message.ReactionAddEvent;
@@ -30,8 +30,8 @@ public class ReactionAddEventHandler implements Consumer<ReactionAddEvent> {
         if(event.getGuildId().isEmpty()) return;
         if(event.getUserId().equals(event.getClient().getSelfId())) return;
 
-        GuildData guildData = Menmu.getGuildData(event.getGuildId().get());
-        Message queueMessage = guildData.getMusicQueueMessage();
+        GuildManager guildManager = Menmu.getGuildManager(event.getGuildId().get());
+        Message queueMessage = guildManager.getMusicQueueMessage();
 
         if(queueMessage == null) return;
         if(!event.getMessageId().equals(queueMessage.getId())) return;
@@ -40,11 +40,11 @@ public class ReactionAddEventHandler implements Consumer<ReactionAddEvent> {
             String rawEmoji = emoji.getRaw();
             if(rawEmoji.equals("⬅️") || rawEmoji.equals("➡️")) {
                 queueMessage.removeReaction(event.getEmoji(), event.getUserId()).subscribe();
-                MenmuTrackScheduler trackScheduler = guildData.getTrackScheduler();
-                List<AudioTrack> rTrackList = guildData.getQueueOnRepeat();
+                MenmuTrackScheduler trackScheduler = guildManager.getTrackScheduler();
+                List<AudioTrack> rTrackList = guildManager.getQueueOnRepeat();
                 List<AudioTrack> trackList = (rTrackList != null) ? new LinkedList<>(rTrackList) : trackScheduler.getQueueAsList();
                 int pages = (int) Math.ceil(trackList.size() / 10.0);
-                int currentPage = guildData.getMusicQueuePage();
+                int currentPage = guildManager.getMusicQueuePage();
 
                 if(rawEmoji.equals("➡️") && currentPage < pages)
                     currentPage++;
@@ -54,13 +54,13 @@ public class ReactionAddEventHandler implements Consumer<ReactionAddEvent> {
 
                 final int page = currentPage;
                 queueMessage.edit(messageEditSpec -> messageEditSpec.setEmbed(spec -> {
-                    Guild guild = guildData.getGuild();
+                    Guild guild = guildManager.getGuild();
                     spec.setAuthor(guild.getName(), Menmu.INVITE_URL, guild.getIconUrl(Image.Format.PNG).orElse(null));
                     spec.setTitle("Music Queue" + ((rTrackList != null) ? " - Repeat Enabled" : ""));
 
                     StringBuilder sb = new StringBuilder();
 
-                    AudioTrack np = guildData.getAudioPlayer().getPlayingTrack();
+                    AudioTrack np = guildManager.getAudioPlayer().getPlayingTrack();
                     if(np != null) {
                         trackList.add(0, np);
                     }
@@ -125,8 +125,8 @@ public class ReactionAddEventHandler implements Consumer<ReactionAddEvent> {
                     String footer = "Page %d/%d | %d tracks in queue | %02d:%02d:%02d total queue length";
                     spec.setFooter(String.format(footer, page, pages, trackListSize, hours, minutes, seconds), iconUrl);
                 })).subscribe(message -> {
-                    guildData.setMusicQueueMessage(message);
-                    guildData.setMusicQueuePage(page);
+                    guildManager.setMusicQueueMessage(message);
+                    guildManager.setMusicQueuePage(page);
                 });
             }
         });
