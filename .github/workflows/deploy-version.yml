@@ -3,12 +3,11 @@ name: Build, Upload to AWS ECR and Deploy with CloudFormation
 on:
   push:
     tags:
-      - *
+      - '*'
 
 env:
   AWS_REGION: eu-central-1
-  ECR_REGISTRY_ALIAS: i4h9h7p4
-  ECR_REPOSITORY_NAME: menmu-discord-bot
+  ECR_REPOSITORY: menma/menmu-discord-bot
 
 jobs:
   build:
@@ -26,7 +25,7 @@ jobs:
       - name: Setup JDK
         uses: actions/setup-java@v4
         with:
-          java-version: '18'
+          java-version: '24'
           distribution: 'corretto'
 
       - name: Setup Gradle
@@ -55,7 +54,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REGISTRY_ALIAS }}/${{ env.ECR_REPOSITORY_NAME }}:${{ github.ref_name }}
+          tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.ref_name }}
           platforms: linux/amd64
           provenance: false
           cache-from: type=gha
@@ -83,19 +82,19 @@ jobs:
       - name: Retrieve AWS VPC Subnets and Security Groups
         id: vpc
         run: |
-          echo "subnets=$(aws ec2 describe-subnets --filters Name=vpc-id,Values=${{ vars.AWS_VPC_ID }} --query 'Subnets[].SubnetId')" >> $GITHUB_OUTPUT
-          echo "security_groups=$(aws ec2 describe-security-groups --filters Name=vpc-id,Values=${{ vars.AWS_VPC_ID }} --query 'SecurityGroups[].GroupId')" >> $GITHUB_OUTPUT
+          echo subnets=$(aws ec2 describe-subnets --filters Name=vpc-id,Values=${{ vars.AWS_VPC_ID }} --query "Subnets[].SubnetId | join(',', @)") >> $GITHUB_OUTPUT
+          echo security_groups=$(aws ec2 describe-security-groups --filters Name=vpc-id,Values=${{ vars.AWS_VPC_ID }} --query "SecurityGroups[].GroupId | join(',', @)") >> $GITHUB_OUTPUT
 
       - name: Deploy to AWS ECS using CloudFormation
-        uses: aws-actions/aws-cloudformation-github-deploy@v1
-        with:
-          name: MenmuDiscordBotStack
-          template: stack.yml
-          no-fail-on-empty-changeset: "1"
-          parameter-overrides: >-
-            ImageVersion=${{ github.ref_name }}
-            BotTokenArn=${{ vars.BOT_TOKEN_ARN }}
-            YoutubeApiTokenArn=${{ vars.YT_API_TOKEN_ARN }}
-            YtOAuth2RefreshTokenArn=${{ vars.YT_OAUTH2_REFRESH_TOKEN_ARN }}
-            Subnets=${{ steps.vpc.outputs.subnets }}
-            SecurityGroups=${{ steps.vpc.outputs.security_groups }}
+        run: aws cloudformation deploy \
+          --stack-name MenmuDiscordBotStack \
+          --template-file stack.yml \
+          --capabilities CAPABILITY_NAMED_IAM \
+          --no-fail-on-empty-changeset \
+          --parameter-overrides \
+              ImageVersion=${{ github.ref_name }} \
+              BotTokenArn=${{ vars.BOT_TOKEN_ARN }} \
+              YoutubeApiTokenArn=${{ vars.YT_API_TOKEN_ARN }} \
+              YtOAuth2RefreshTokenArn=${{ vars.YT_OAUTH2_REFRESH_TOKEN_ARN }} \
+              Subnets=${{ steps.vpc.outputs.subnets }} \
+              SecurityGroups=${{ steps.vpc.outputs.security_groups }}
