@@ -11,7 +11,7 @@ A mostly music discord bot written in Java using the Discord4J library.
 For easy installation you can use [Docker](https://docker.com) to download the image from Amazon ECR like below:
 
 ```bash
-docker pull public.ecr.aws/i4h9h7p4/menmu-discord-bot:latest
+docker pull public.ecr.aws/menma/menmu-discord-bot:latest
 ```
 
 ## Running with Docker
@@ -24,7 +24,7 @@ To run the bot you need to set the following environment variables:
 After setting them, run the docker image:
 
 ```bash
-docker run -d -e BOT_TOKEN -e YT_API_KEY public.ecr.aws/i4h9h7p4/menmu-discord-bot:latest
+docker run -d -e BOT_TOKEN -e YT_API_KEY public.ecr.aws/menma/menmu-discord-bot:latest
 ```
 
 Or directly assign the variables on the command:
