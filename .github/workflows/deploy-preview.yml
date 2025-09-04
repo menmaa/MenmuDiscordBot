@@ -1,4 +1,4 @@
-name: Build And Upload to AWS ECR
+name: Build And Publish to AWS ECR (Preview)
 
 on:
   push:
@@ -7,15 +7,13 @@ on:
   workflow_dispatch:
 
 env:
-  AWS_REGION: us-east-1
-  ECR_REGISTRY_ALIAS: i4h9h7p4
-  ECR_REPOSITORY_NAME: menmu-discord-bot
-  ECR_IMAGE_TAG: latest
+  ECR_REPOSITORY: menma/menmu-discord-bot
+  ECR_IMAGE_TAG: preview
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: Production
+    environment: Preview
 
     permissions:
       id-token: write
@@ -28,7 +26,7 @@ jobs:
       - name: Setup JDK
         uses: actions/setup-java@v4
         with:
-          java-version: '18'
+          java-version: '24'
           distribution: 'corretto'
 
       - name: Setup Gradle
@@ -40,8 +38,8 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.AWS_ASSUME_ROLE }}
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ASSUME_ROLE }}
+          aws-region: us-east-1
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -57,7 +55,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REGISTRY_ALIAS }}/${{ env.ECR_REPOSITORY_NAME }}:${{ env.ECR_IMAGE_TAG }}
+          tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.ECR_IMAGE_TAG }}
           platforms: linux/amd64
           provenance: false
           cache-from: type=gha
