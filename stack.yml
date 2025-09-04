@@ -65,7 +65,7 @@ Resources:
       ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
       ContainerDefinitions:
         - Name: menmu-discord-bot
-          Image: !Sub public.ecr.aws/i4h9h7p4/menmu-discord-bot:${ImageVersion}
+          Image: !Sub public.ecr.aws/menma/menmu-discord-bot:${ImageVersion}
           Essential: true
           Secrets:
             - Name: BOT_TOKEN
