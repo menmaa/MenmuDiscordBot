@@ -88,7 +88,7 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
         run: |
           ssh ${VPS_USER}@${VPS_HOSTNAME} << 'EOF'
-            docker pull "$IMAGE"
+            docker pull ${{ env.IMAGE }}
             docker image prune -f
           EOF
     
