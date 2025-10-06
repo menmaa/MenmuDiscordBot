@@ -66,10 +66,6 @@ jobs:
     environment: Preview
     needs: build
 
-    permissions:
-      id-token: write
-      contents: read
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -87,8 +83,8 @@ jobs:
 
       - name: Pull image
         env:
-          IMAGE: public.ecr.aws/${{ env.ECR_REPOSITORY }}/${{ env.ECR_IMAGE_TAG }}
-          VPS_HOSTNAME: ${{ secrets.VPS_USERNAME }}
+          IMAGE: public.ecr.aws/${{ env.ECR_REPOSITORY }}:${{ env.ECR_IMAGE_TAG }}
+          VPS_HOSTNAME: ${{ secrets.VPS_HOSTNAME }}
           VPS_USER: ${{ secrets.VPS_USER }}
         run: |
           ssh ${VPS_USER}@${VPS_HOSTNAME} << 'EOF'
