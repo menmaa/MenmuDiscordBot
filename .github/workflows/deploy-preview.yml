@@ -1,4 +1,4 @@
-name: Build And Publish to AWS ECR (Preview)
+name: Build, Publish to AWS ECR & Deploy to Preview
 
 on:
   push:
@@ -60,3 +60,39 @@ jobs:
           provenance: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    runs-on: ubuntu-latest
+    environment: Preview
+    needs: build
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Start ssh-agent
+        uses: webfactory/ssh-agent@v0.8.1
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.VPS_HOSTNAME }} >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Pull image
+        env:
+          IMAGE: public.ecr.aws/${{ env.ECR_REPOSITORY }}/${{ env.ECR_IMAGE_TAG }}
+          VPS_HOSTNAME: ${{ secrets.VPS_USERNAME }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          ssh ${VPS_USER}@${VPS_HOSTNAME} << 'EOF'
+            docker pull "$IMAGE"
+            docker image prune -f
+          EOF
+    
