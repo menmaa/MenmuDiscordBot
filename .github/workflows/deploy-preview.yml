@@ -75,7 +75,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Start ssh-agent
-        uses: webfactory/ssh-agent@v0.8.1
+        uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
 
