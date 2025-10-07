@@ -1,0 +1,17 @@
+services:
+  ejs-api:
+    image: ghcr.io/kikkia/yt-cipher:master
+    container_name: ejs-signature-api
+    environment:
+      - YT_CIPHER_API_TOKEN
+    restart: unless-stopped
+  menmu:
+    image: "$IMAGE"
+    container_name: "$APP_NAME"
+    environment:
+      - BOT_TOKEN
+      - YT_API_KEY
+      - YT_OAUTH2_REFRESH_TOKEN
+      - YT_CIPHER_API_URL=http://ejs-api:8001/
+      - YT_CIPHER_API_TOKEN
+    restart: unless-stopped
