@@ -9,6 +9,7 @@ import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers;
 import dev.lavalink.youtube.YoutubeAudioSourceManager;
+import dev.lavalink.youtube.YoutubeSourceOptions;
 import dev.lavalink.youtube.clients.*;
 import discord4j.common.util.Snowflake;
 import discord4j.core.DiscordClient;
@@ -41,7 +42,7 @@ import java.util.concurrent.ScheduledFuture;
 /**
  * Menmu.java
  * Menmu Discord Bot
- *
+ * <p>
  * Created by Menma on 27/08/2020
  * Copyright © 2020 Menma Systems. All Rights Reserved.
  */
@@ -81,10 +82,24 @@ public class Menmu {
 
         youtubeSearch = new YoutubeSearch(youtubeApiKey);
         playerManager = new DefaultAudioPlayerManager();
-        YoutubeAudioSourceManager ytAudioSourceManager = new YoutubeAudioSourceManager(new Music(), new Web(), new WebEmbedded(), new Tv(), new TvHtml5Embedded());
+
+        String ytCipherApiUrl = System.getenv("YT_CIPHER_API_URL");
+        String ytCipherApiToken = System.getenv("YT_CIPHER_API_TOKEN");
         String ytOAuth2RefreshToken = System.getenv("YT_OAUTH2_REFRESH_TOKEN");
+
+        YoutubeSourceOptions options = new YoutubeSourceOptions();
+
+        if(ytCipherApiUrl != null) {
+            logger.info("Using YouTube Remote Cipher Server at {}", ytCipherApiUrl);
+            options.setRemoteCipherUrl(ytCipherApiUrl, ytCipherApiToken);
+        } else {
+            logger.warn("YT_CIPHER_API_KEY env var is missing. Remote Cipher will not be used. This may break functionality with YouTube.");
+        }
+
+        YoutubeAudioSourceManager ytAudioSourceManager = new YoutubeAudioSourceManager(options, new Music(), new Web(), new WebEmbedded(), new Tv(), new TvHtml5Embedded());
         ytAudioSourceManager.useOauth2(ytOAuth2RefreshToken, true);
         playerManager.registerSourceManager(ytAudioSourceManager);
+        //noinspection deprecation
         AudioSourceManagers.registerRemoteSources(getPlayerManager(), com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager.class);
 
         discordGateway = Objects.requireNonNull(DiscordClient.create(botToken).login().block());
