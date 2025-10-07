@@ -89,15 +89,21 @@ jobs:
           IMAGE: public.ecr.aws/${{ env.ECR_REPOSITORY }}:${{ env.ECR_IMAGE_TAG }}
           VPS_HOSTNAME: ${{ secrets.VPS_HOSTNAME }}
           VPS_USER: ${{ secrets.VPS_USER }}
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          YT_API_KEY: ${{ secrets.YT_API_KEY }}
-          YT_OAUTH2_REFRESH_TOKEN: ${{ secrets.YT_OAUTH2_REFRESH_TOKEN }}
+          DOCKER_COMPOSE_FILE_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref }}/docker-compose.yml
         run: |
           ssh ${VPS_USER}@${VPS_HOSTNAME} << 'EOF'
             set -euo pipefail
-            docker pull ${{ env.IMAGE }}
-            docker container rm -f ${{ env.APP_NAME }} 2> /dev/null || true
-            docker run -d --name ${{ env.APP_NAME }} -e BOT_TOKEN=${{ env.BOT_TOKEN }} -e YT_API_KEY=${{ env.YT_API_KEY }} -e YT_OAUTH2_REFRESH_TOKEN=${{ env.YT_OAUTH2_REFRESH_TOKEN }} ${{ env.IMAGE }}
-            docker image prune -f
+          
+            APP_DIR=/home/${{ env.VPS_USER }}/${{ env.APP_NAME }}
+            cd $APP_DIR || mkdir -p $APP_DIR && cd $APP_DIR
+            curl -fsSL ${{ env.DOCKER_COMPOSE_FILE_URL }} -o docker-compose.yml
+          
+            export IMAGE=${{ env.IMAGE }}
+            export APP_NAME=${{ env.APP_NAME }}
+            export BOT_TOKEN=${{ secrets.BOT_TOKEN }}
+            export YT_API_KEY=${{ secrets.YT_API_KEY }}
+            export YT_OAUTH2_REFRESH_TOKEN=${{ secrets.YT_OAUTH2_REFRESH_TOKEN }}
+          
+            docker compose pull
+            docker compose up -d
           EOF
-    
