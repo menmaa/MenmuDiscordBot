@@ -1,10 +1,7 @@
 package com.menmasystems.menmudiscordbot.commandhandlers;
 
-import com.menmasystems.menmudiscordbot.Menmu;
-import com.menmasystems.menmudiscordbot.MenmuCommandInteractionEvent;
-import com.menmasystems.menmudiscordbot.MenmuTrackData;
-import com.menmasystems.menmudiscordbot.MenmuTrackScheduler;
-import com.menmasystems.menmudiscordbot.errorhandlers.CommandExecutionException;
+import com.menmasystems.menmudiscordbot.*;
+import com.menmasystems.menmudiscordbot.errorhandler.CommandExecutionException;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
 import com.menmasystems.menmudiscordbot.manager.GuildManager;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
@@ -35,7 +32,7 @@ public class QueueCommandHandler implements CommandHandler {
         if(event.getInteraction().getGuildId().isEmpty())
             return Mono.error(new CommandExecutionException("play", "Guild ID is empty."));
 
-        GuildManager guildManager = Menmu.getGuildManager(event.getInteraction().getGuildId().get());
+        GuildManager guildManager = Managers.getGuildManager(event.getInteraction().getGuildId().get());
         AudioPlayer player = guildManager.getAudioPlayer();
         MenmuTrackScheduler trackScheduler = guildManager.getTrackScheduler();
         List<AudioTrack> rTrackList = guildManager.getQueueOnRepeat();
@@ -89,11 +86,11 @@ public class QueueCommandHandler implements CommandHandler {
 
             sb.append(track.getInfo().title);
             sb.append("](");
-            sb.append(trackData.url);
+            sb.append(trackData.getUrl());
             sb.append(") - ");
             sb.append(duration);
             sb.append(" - Requested by ");
-            sb.append(trackData.requestedBy.getDisplayName());
+            sb.append(trackData.getRequestedBy().getDisplayName());
             sb.append("\n\n");
 
             if(np != null && i == 0) {

@@ -47,7 +47,7 @@ public class HelpCommandHandler implements CommandHandler {
                                         "[Click here to invite me to your own server!](" + Menmu.INVITE_URL + ")"))
                                 .map(builder -> builder.addField("<a:musical_note:752807255497244672> Music Commands", "`play` `pause` `stop` `queue` `clear` " +
                                         "`join` `leave` `repeat` `repeatqueue` `skip` `seek` `remove`", false))
-                                .map(builder -> builder.footer("Created by " + Menmu.menma.getTag(), Menmu.menma.getAvatarUrl()))
+                                .map(builder -> builder.footer("Created by " + Menmu.getMenma().getTag(), Menmu.getMenma().getAvatarUrl()))
                                 .map(builder -> InteractionApplicationCommandCallbackSpec.builder().addEmbed(builder.build()).build())
                                 .flatMap(event::reply);
                     }

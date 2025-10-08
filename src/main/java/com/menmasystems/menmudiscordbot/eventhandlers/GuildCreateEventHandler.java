@@ -1,5 +1,6 @@
 package com.menmasystems.menmudiscordbot.eventhandlers;
 
+import com.menmasystems.menmudiscordbot.Managers;
 import com.menmasystems.menmudiscordbot.Menmu;
 import com.menmasystems.menmudiscordbot.MenmuTrackScheduler;
 import com.menmasystems.menmudiscordbot.manager.GuildManager;
@@ -24,6 +25,6 @@ public class GuildCreateEventHandler implements Consumer<GuildCreateEvent> {
         AudioPlayer player = Menmu.getPlayerManager().createPlayer();
         MenmuTrackScheduler trackScheduler = new MenmuTrackScheduler(guild, player);
         player.addListener(trackScheduler);
-        Menmu.addConnectedGuild(guild.getId(), new GuildManager(guild, player, trackScheduler));
+        Managers.addConnectedGuild(guild.getId(), new GuildManager(guild, player, trackScheduler));
     }
 }

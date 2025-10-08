@@ -5,10 +5,11 @@ import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.object.presence.ClientActivity;
 import discord4j.core.object.presence.ClientPresence;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import reactor.core.Disposable;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
-import java.util.concurrent.TimeUnit;
+import java.time.Duration;
 import java.util.function.Consumer;
 
 /**
@@ -21,20 +22,26 @@ import java.util.function.Consumer;
 
 public class ReadyEventHandler implements Consumer<ReadyEvent> {
 
-    Logger logger = LoggerFactory.getLogger(ReadyEventHandler.class);
+    private static final String ACTIVITY_MSG = "v" + Menmu.VERSION_NUMBER + " | /help";
+    private static final Snowflake MENMA_USER_ID = Snowflake.of(303676987975663616L);
+
+    private static Disposable presenceTask = null;
 
     @Override
     public void accept(ReadyEvent readyEvent) {
-        if(Menmu.presenceTask == null) {
-            Menmu.presenceTask = Menmu.getGpScheduledExecutor().scheduleAtFixedRate(() -> {
-                try {
-                    String activityMsg = "v" + Menmu.VERSION_NUMBER + " | /help";
-                    readyEvent.getClient().updatePresence(ClientPresence.online(ClientActivity.playing(activityMsg))).block();
-                    Menmu.menma = readyEvent.getClient().getUserById(Snowflake.of(303676987975663616L)).block();
-                } catch (RuntimeException e) {
-                    logger.error("Runtime exception occured when trying to execute presence task.", e);
-                }
-            }, 0, 10, TimeUnit.MINUTES);
+        if(presenceTask != null && !presenceTask.isDisposed()) {
+            presenceTask.dispose();
+            presenceTask = null;
         }
+
+        ClientPresence presence = ClientPresence.online(ClientActivity.custom(ACTIVITY_MSG));
+
+        presenceTask = readyEvent.getClient().updatePresence(presence)
+                .then(readyEvent.getClient().getUserById(MENMA_USER_ID))
+                .doOnNext(Menmu::setMenma)
+                .then(Mono.delay(Duration.ofHours(1)))
+                .repeat()
+                .subscribeOn(Schedulers.boundedElastic())
+                .subscribe();
     }
 }

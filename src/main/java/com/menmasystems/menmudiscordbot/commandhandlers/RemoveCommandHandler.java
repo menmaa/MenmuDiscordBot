@@ -1,8 +1,9 @@
 package com.menmasystems.menmudiscordbot.commandhandlers;
 
+import com.menmasystems.menmudiscordbot.Managers;
 import com.menmasystems.menmudiscordbot.Menmu;
 import com.menmasystems.menmudiscordbot.MenmuCommandInteractionEvent;
-import com.menmasystems.menmudiscordbot.errorhandlers.InvalidQueuePositionException;
+import com.menmasystems.menmudiscordbot.errorhandler.InvalidQueuePositionException;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
 import com.menmasystems.menmudiscordbot.manager.GuildManager;
 import discord4j.core.object.command.ApplicationCommandInteractionOption;
@@ -34,7 +35,7 @@ public class RemoveCommandHandler implements CommandHandler {
             }
 
             return Mono.justOrEmpty(event.getInteraction().getGuildId())
-                    .map(Menmu::getGuildManager)
+                    .map(Managers::getGuildManager)
                     .map(GuildManager::getTrackScheduler)
                     .flatMap(trackScheduler -> trackScheduler.removeQueue((int) position))
                     .doOnSuccess(removed -> {

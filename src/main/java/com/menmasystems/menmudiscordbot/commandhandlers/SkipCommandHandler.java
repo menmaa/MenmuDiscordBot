@@ -1,10 +1,11 @@
 package com.menmasystems.menmudiscordbot.commandhandlers;
 
+import com.menmasystems.menmudiscordbot.Managers;
 import com.menmasystems.menmudiscordbot.Menmu;
 import com.menmasystems.menmudiscordbot.MenmuCommandInteractionEvent;
 import com.menmasystems.menmudiscordbot.MenmuTrackScheduler;
-import com.menmasystems.menmudiscordbot.errorhandlers.InvalidQueuePositionException;
-import com.menmasystems.menmudiscordbot.errorhandlers.MusicQueueEmptyException;
+import com.menmasystems.menmudiscordbot.errorhandler.InvalidQueuePositionException;
+import com.menmasystems.menmudiscordbot.errorhandler.MusicQueueEmptyException;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
 import com.menmasystems.menmudiscordbot.manager.GuildManager;
 import discord4j.core.object.command.ApplicationCommandInteractionOption;
@@ -26,7 +27,7 @@ public class SkipCommandHandler implements CommandHandler {
     public Mono<Void> handle(MenmuCommandInteractionEvent event) {
         if(event.getOption("position").isEmpty()) {
             return Mono.justOrEmpty(event.getInteraction().getGuildId())
-                    .map(Menmu::getGuildManager)
+                    .map(Managers::getGuildManager)
                     .map(GuildManager::getTrackScheduler)
                     .flatMap(MenmuTrackScheduler::skip)
                     .doOnSuccess(unused -> event.sendSuccessInteractionReply(":white_check_mark: Song skipped!").subscribe())
@@ -44,7 +45,7 @@ public class SkipCommandHandler implements CommandHandler {
                 }
 
                 return Mono.justOrEmpty(event.getInteraction().getGuildId())
-                        .map(Menmu::getGuildManager)
+                        .map(Managers::getGuildManager)
                         .map(GuildManager::getTrackScheduler)
                         .flatMap(trackScheduler -> trackScheduler.skipTo((int) position))
                         .doOnSuccess(unused -> {

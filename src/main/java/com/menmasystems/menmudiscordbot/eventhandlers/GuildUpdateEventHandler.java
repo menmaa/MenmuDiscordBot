@@ -1,6 +1,6 @@
 package com.menmasystems.menmudiscordbot.eventhandlers;
 
-import com.menmasystems.menmudiscordbot.Menmu;
+import com.menmasystems.menmudiscordbot.Managers;
 import discord4j.core.event.domain.guild.GuildUpdateEvent;
 import discord4j.core.object.entity.Guild;
 
@@ -18,7 +18,7 @@ public class GuildUpdateEventHandler implements Consumer<GuildUpdateEvent> {
     @Override
     public void accept(GuildUpdateEvent guildUpdateEvent) {
         Guild guild = guildUpdateEvent.getCurrent();
-        Menmu.getGuildManager(guild.getId()).setGuild(guild);
-        Menmu.getGuildManager(guild.getId()).getTrackScheduler().setGuild(guild);
+        Managers.getGuildManager(guild.getId()).setGuild(guild);
+        Managers.getGuildManager(guild.getId()).getTrackScheduler().setGuild(guild);
     }
 }

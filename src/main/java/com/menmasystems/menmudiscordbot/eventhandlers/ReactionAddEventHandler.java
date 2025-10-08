@@ -1,5 +1,6 @@
 package com.menmasystems.menmudiscordbot.eventhandlers;
 
+import com.menmasystems.menmudiscordbot.Managers;
 import com.menmasystems.menmudiscordbot.Menmu;
 import com.menmasystems.menmudiscordbot.MenmuTrackData;
 import com.menmasystems.menmudiscordbot.MenmuTrackScheduler;
@@ -30,7 +31,7 @@ public class ReactionAddEventHandler implements Consumer<ReactionAddEvent> {
         if(event.getGuildId().isEmpty()) return;
         if(event.getUserId().equals(event.getClient().getSelfId())) return;
 
-        GuildManager guildManager = Menmu.getGuildManager(event.getGuildId().get());
+        GuildManager guildManager = Managers.getGuildManager(event.getGuildId().get());
         Message queueMessage = guildManager.getMusicQueueMessage();
 
         if(queueMessage == null) return;
@@ -88,11 +89,11 @@ public class ReactionAddEventHandler implements Consumer<ReactionAddEvent> {
 
                         sb.append(track.getInfo().title);
                         sb.append("](");
-                        sb.append(trackData.url);
+                        sb.append(trackData.getUrl());
                         sb.append(") - ");
                         sb.append(duration);
                         sb.append(" - Requested by ");
-                        sb.append(trackData.requestedBy.getDisplayName());
+                        sb.append(trackData.getRequestedBy().getDisplayName());
                         sb.append("\n\n");
 
                         if(np != null && i == 0) {

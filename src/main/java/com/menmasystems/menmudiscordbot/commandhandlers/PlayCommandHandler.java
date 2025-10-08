@@ -1,27 +1,21 @@
 package com.menmasystems.menmudiscordbot.commandhandlers;
 
-import com.google.api.services.youtube.model.SearchResult;
-import com.menmasystems.menmudiscordbot.Menmu;
-import com.menmasystems.menmudiscordbot.MenmuCommandInteractionEvent;
-import com.menmasystems.menmudiscordbot.MenmuTrackData;
-import com.menmasystems.menmudiscordbot.MenmuTrackScheduler;
-import com.menmasystems.menmudiscordbot.errorhandlers.CommandExecutionException;
+import com.menmasystems.menmudiscordbot.*;
+import com.menmasystems.menmudiscordbot.errorhandler.CommandExecutionException;
+import com.menmasystems.menmudiscordbot.errorhandler.YouTubeSearchEmptyResultSetException;
+import com.menmasystems.menmudiscordbot.handler.MenmuAudioLoadResultHandler;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
 import com.menmasystems.menmudiscordbot.manager.GuildManager;
-import com.sedmelluq.discord.lavaplayer.player.AudioLoadResultHandler;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
-import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
-import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
-import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
+import discord4j.common.util.Snowflake;
 import discord4j.core.object.command.ApplicationCommandInteractionOption;
 import discord4j.core.object.command.ApplicationCommandInteractionOptionValue;
+import discord4j.core.object.entity.Member;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.core.spec.InteractionApplicationCommandCallbackSpec;
 import discord4j.core.spec.InteractionFollowupCreateSpec;
 import reactor.core.publisher.Mono;
-
-import java.time.Instant;
-import java.util.List;
+import reactor.core.scheduler.Schedulers;
 
 /**
  * PlayCommandHandler.java
@@ -38,123 +32,40 @@ public class PlayCommandHandler implements CommandHandler {
         if(event.getInteraction().getGuildId().isEmpty())
             return Mono.error(new CommandExecutionException("play", "Guild ID is empty."));
 
-        GuildManager guildManager = Menmu.getGuildManager(event.getInteraction().getGuildId().get());
-        List<ApplicationCommandInteractionOption> options = event.getOptions();
+        Snowflake guildId = event.getInteraction().getGuildId().get();
+        Member member = event.getInteraction().getMember().get();
+        GuildManager guildManager = Managers.getGuildManager(guildId);
 
-        if(event.getOption("url").isPresent()) {
-            if(event.getInteraction().getMember().isEmpty()) return Mono.error(new CommandExecutionException("play", "Member is empty"));
+        if(event.getOption("input").isEmpty())
+            return handleEmptyInput(event, guildManager);
 
-            final String loadItem;
-            MenmuTrackData trackData = new MenmuTrackData(event.getInteraction().getMember().get());
+        if(event.getInteraction().getMember().isEmpty())
+            return Mono.error(new CommandExecutionException("play", "Member is empty"));
 
-            @SuppressWarnings("OptionalGetWithoutIsPresent")
-            String url = event.getOption("url")
-                    .flatMap(ApplicationCommandInteractionOption::getValue)
-                    .map(ApplicationCommandInteractionOptionValue::asString)
-                    .get();
+        // noinspection OptionalGetWithoutIsPresent
+        String input = event.getOption("input")
+                .flatMap(ApplicationCommandInteractionOption::getValue)
+                .map(ApplicationCommandInteractionOptionValue::asString)
+                .get();
 
-            event.deferReply().block();
-
-            if(url.startsWith("http://") || url.startsWith("https://")) {
-                // Looks like a url, just load it up for request on player manager later.
-                loadItem = trackData.url = url;
-            } else {
-                // Assuming text, call search on YouTube API see if we can get results
-                try {
-                    SearchResult ytResults = Menmu.getYoutubeSearch().getYtVideoDataBySearchQuery(url);
-                    if(ytResults != null) {
-                        loadItem = trackData.url = "https://www.youtube.com/watch?v=" + ytResults.getId().getVideoId();
-                        trackData.channelName = ytResults.getSnippet().getChannelTitle();
-                        trackData.thumbnailUrl = ytResults.getSnippet().getThumbnails().getDefault().getUrl();
-                        trackData.ytInfoFetched = true;
-                    } else {
-                        String msg = ":no_entry_sign: Search for `" + url + "` returned no results.";
-                        InteractionFollowupCreateSpec spec = InteractionFollowupCreateSpec.builder().content(msg).build();
-                        event.createFollowup(spec).block();
-                        return Mono.empty();
+        return event.deferReply()
+                .then(Mono.defer(() -> {
+                    if(input.startsWith("https://") || input.startsWith("http://")) {
+                        return Mono.just(new MenmuTrackData(input, member));
                     }
-                } catch (RuntimeException e) {
-                    return Mono.error(e);
-                }
-            }
 
-            // Now we can attempt to load the track or playlist.
-            Menmu.getPlayerManager().loadItem(loadItem, new AudioLoadResultHandler() {
-                @Override
-                public void trackLoaded(AudioTrack track) {
-                    trackData.dateTimeRequested = Instant.now();
-                    track.setUserData(trackData);
-                    MenmuTrackScheduler trackScheduler = guildManager.getTrackScheduler();
-                    trackScheduler.queue(track);
-                    List<AudioTrack> repeatingQueue = guildManager.getQueueOnRepeat();
-                    int size = (repeatingQueue != null) ? repeatingQueue.size() : trackScheduler.queue.size();
-                    EmbedCreateSpec spec = Menmu.createSuccessEmbedSpec(
-                            String.format(":white_check_mark: Enqueued `%s` to position %d", track.getInfo().title, size)
-                    );
-                    event.createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(spec).build()).block();
-
-                    play(event, guildManager).doOnError(e -> {
-                        if(e instanceof CommandExecutionException)
-                            ((CommandExecutionException) e).createErrorMessage(event, true).subscribe();
-                        String msg = ":no_entry_sign: Cannot auto start playing. Use command `play` to play manually.";
-                        EmbedCreateSpec errorSpec = Menmu.createErrorEmbedSpec(msg, null);
-                        event.createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(errorSpec).build()).block();
-                    }).subscribe();
-                }
-
-                @Override
-                public void playlistLoaded(AudioPlaylist playlist) {
-                    for(AudioTrack track : playlist.getTracks()) {
-                        MenmuTrackData menmuTrackData = new MenmuTrackData(event.getInteraction().getMember().get());
-                        menmuTrackData.dateTimeRequested = Instant.now();
-                        if(track.getSourceManager().getSourceName().equals("youtube"))
-                            menmuTrackData.url = "https://www.youtube.com/watch?v=" + track.getIdentifier();
-                        track.setUserData(menmuTrackData);
-                        guildManager.getTrackScheduler().queue(track);
-                    }
-                    EmbedCreateSpec spec = Menmu.createSuccessEmbedSpec(
-                            String.format(":white_check_mark: Enqueued %d songs from playlist `%s`",
-                                    playlist.getTracks().size(), playlist.getName()));
-                    event.createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(spec).build()).block();
-
-                    play(event, guildManager).doOnError(e -> {
-                        if(e instanceof CommandExecutionException)
-                            ((CommandExecutionException) e).createErrorMessage(event, true).subscribe();
-                        String msg = ":no_entry_sign: Cannot auto start playing. Use command `play` to play manually.";
-                        EmbedCreateSpec errorSpec = Menmu.createErrorEmbedSpec(msg, null);
-                        event.createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(errorSpec).build()).block();
-                    }).subscribe();
-                }
-
-                @Override
-                public void noMatches() {
-                    EmbedCreateSpec spec = Menmu.createErrorEmbedSpec(":no_entry_sign: Error: No Matches", null);
-                    event.createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(spec).build()).block();
-                }
-
-                @Override
-                public void loadFailed(FriendlyException exception) {
-                    String message = ":no_entry_sign: Eh... I'm sorry, but I was unable to load that track. Please try again.";
-                    EmbedCreateSpec spec = Menmu.createErrorEmbedSpec(message, exception.getMessage());
-                    event.createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(spec).build()).block();
-                }
-            });
-        } else {
-            AudioPlayer guildAudioPlayer = guildManager.getAudioPlayer();
-            MenmuTrackScheduler guildTrackScheduler = guildManager.getTrackScheduler();
-            if(guildAudioPlayer.isPaused()) {
-                guildAudioPlayer.setPaused(false);
-                EmbedCreateSpec spec = Menmu.createSuccessEmbedSpec(":play_pause: Resuming player...");
-                event.createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(spec).build()).block();
-            } else if(guildAudioPlayer.getPlayingTrack() != null || !guildTrackScheduler.queue.isEmpty()) {
-                play(event, guildManager).block();
-            } else {
-                String msg = ":no_entry_sign: Player is not paused, or music queue is empty.";
-                EmbedCreateSpec errorSpec = Menmu.createErrorEmbedSpec(msg, null);
-                event.createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(errorSpec).build()).block();
-            }
-        }
-        return Mono.empty();
+                    return searchYouTube(input, member);
+                }))
+                .publishOn(Schedulers.boundedElastic())
+                .doOnError(YouTubeSearchEmptyResultSetException.class, err -> {
+                    var msg = ":no_entry_sign: Search for `" + input + "` returned no results.";
+                    var spec = InteractionFollowupCreateSpec.builder().content(msg).build();
+                    event.createFollowup(spec).subscribe();
+                })
+                .doOnNext(trackData -> {
+                    Menmu.getPlayerManager().loadItem(trackData.getUrl(), new MenmuAudioLoadResultHandler(guildManager, event, trackData));
+                })
+                .then();
     }
 
     @Override
@@ -178,7 +89,46 @@ public class PlayCommandHandler implements CommandHandler {
                 .subscribe();
     }
 
-    private Mono<Void> play(MenmuCommandInteractionEvent event, GuildManager guildManager) {
+    private Mono<Void> handleEmptyInput(MenmuCommandInteractionEvent event, GuildManager guildManager) {
+        AudioPlayer guildAudioPlayer = guildManager.getAudioPlayer();
+        MenmuTrackScheduler guildTrackScheduler = guildManager.getTrackScheduler();
+
+        if(guildAudioPlayer.isPaused()) {
+            guildAudioPlayer.setPaused(false);
+            var spec = InteractionFollowupCreateSpec.builder()
+                    .addEmbed(Menmu.createSuccessEmbedSpec(":play_pause: Resuming player..."))
+                    .build();
+
+            return event.createFollowup(spec).then();
+        }
+
+        if(guildAudioPlayer.getPlayingTrack() != null || !guildTrackScheduler.queue.isEmpty()) {
+            return startPlayer(event, guildManager);
+        }
+
+        String msg = ":no_entry_sign: Player is not paused, or music queue is empty.";
+        var spec = InteractionFollowupCreateSpec.builder()
+                .addEmbed(Menmu.createErrorEmbedSpec(msg, null))
+                .build();
+
+        return event.createFollowup(spec).then();
+    }
+
+    private Mono<MenmuTrackData> searchYouTube(String searchQuery, Member requestedBy) {
+        MenmuTrackData trackData = new MenmuTrackData(requestedBy);
+
+        return Mono.justOrEmpty(Menmu.getYoutubeSearch().getYtVideoDataBySearchQuery(searchQuery))
+                .switchIfEmpty(Mono.error(new YouTubeSearchEmptyResultSetException(searchQuery + " returned no results.")))
+                .doOnNext(result -> {
+                    trackData.setUrl("https://www.youtube.com/watch?v=" + result.getId().getVideoId());
+                    trackData.setChannelName(result.getSnippet().getChannelTitle());
+                    trackData.setThumbnailUrl(result.getSnippet().getThumbnails().getDefault().getUrl());
+                    trackData.setYtInfoFetched(true);
+                })
+                .thenReturn(trackData);
+    }
+
+    private Mono<Void> startPlayer(MenmuCommandInteractionEvent event, GuildManager guildManager) {
         if (guildManager.getVoiceConnection() == null) {
             return Menmu.getCommandHandler("join")
                     .cast(JoinCommandHandler.class)

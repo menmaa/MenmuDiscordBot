@@ -1,17 +1,15 @@
 package com.menmasystems.menmudiscordbot;
 
 import com.menmasystems.menmudiscordbot.commandhandlers.*;
-import com.menmasystems.menmudiscordbot.errorhandlers.UnknownCommandException;
+import com.menmasystems.menmudiscordbot.errorhandler.UnknownCommandException;
 import com.menmasystems.menmudiscordbot.eventhandlers.*;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
-import com.menmasystems.menmudiscordbot.manager.GuildManager;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.source.AudioSourceManagers;
 import dev.lavalink.youtube.YoutubeAudioSourceManager;
 import dev.lavalink.youtube.YoutubeSourceOptions;
 import dev.lavalink.youtube.clients.*;
-import discord4j.common.util.Snowflake;
 import discord4j.core.DiscordClient;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.VoiceStateUpdateEvent;
@@ -37,7 +35,6 @@ import reactor.util.annotation.Nullable;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 
 /**
  * Menmu.java
@@ -50,17 +47,14 @@ import java.util.concurrent.ScheduledFuture;
 public class Menmu {
 
     public static final String VERSION_NUMBER = "0.2 (Beta)";
-    public static final String INVITE_URL = "https://menmasystems.com/menmu/invite";
-    public static final String RES_URL = "https://menmasystems.com/menmu/resources/";
+    public static final String INVITE_URL = "https://menma.dev/menmu/invite";
     public static final Color DEFAULT_EMBED_COLOR = Color.of(0x47FFFF);
 
-    public static User menma;
-    public static ScheduledFuture<?> presenceTask;
+    private static User menma;
 
     private static GatewayDiscordClient discordGateway;
     private static AudioPlayerManager playerManager;
     private static YoutubeSearch youtubeSearch;
-    private static final Map<Snowflake, GuildManager> connectedGuilds = new HashMap<>();
     private static final Map<String, CommandHandler> commandHandlers = new HashMap<>();
     private static final ScheduledExecutorService gpScheduledExecutor = Executors.newSingleThreadScheduledExecutor();
     private static final Logger logger = LoggerFactory.getLogger(Menmu.class);
@@ -115,7 +109,8 @@ public class Menmu {
     }
 
     private static void registerCommands() {
-        long applicationId = getDiscordGateway().getRestClient().getApplicationId().block();
+        long applicationId =
+                Objects.requireNonNull(getDiscordGateway().getRestClient().getApplicationId().block());
 
         List<ApplicationCommandRequest> commandRequestList = new ArrayList<>();
 
@@ -145,7 +140,7 @@ public class Menmu {
                 .name("play")
                 .description("Adds an entry to the playing queue")
                 .addOption(ApplicationCommandOptionData.builder()
-                        .name("url")
+                        .name("input")
                         .description("URL/Link of Youtube Video OR YouTube search phrase")
                         .type(ApplicationCommandOption.Type.STRING.getValue())
                         .required(true)
@@ -254,18 +249,6 @@ public class Menmu {
         return playerManager;
     }
 
-    public static GuildManager getGuildManager(Snowflake guildId) {
-        return connectedGuilds.get(guildId);
-    }
-
-    public static void addConnectedGuild(Snowflake guildId, GuildManager data) {
-        connectedGuilds.put(guildId, data);
-    }
-
-    public static void removeConnectedGuild(Snowflake guildId) {
-        connectedGuilds.remove(guildId);
-    }
-
     public static void sendSuccessMessage(@Nullable MessageChannel channel, String message) {
         if(channel != null) {
             channel.createEmbed(embedCreateSpec -> {
@@ -309,5 +292,13 @@ public class Menmu {
 
     public static ScheduledExecutorService getGpScheduledExecutor() {
         return gpScheduledExecutor;
+    }
+
+    public static User getMenma() {
+        return menma;
+    }
+
+    public static void setMenma(User menma) {
+        Menmu.menma = menma;
     }
 }

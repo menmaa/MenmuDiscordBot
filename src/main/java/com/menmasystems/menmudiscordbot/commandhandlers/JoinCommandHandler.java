@@ -1,9 +1,11 @@
 package com.menmasystems.menmudiscordbot.commandhandlers;
 
+import com.menmasystems.menmudiscordbot.Managers;
 import com.menmasystems.menmudiscordbot.Menmu;
 import com.menmasystems.menmudiscordbot.MenmuCommandInteractionEvent;
-import com.menmasystems.menmudiscordbot.errorhandlers.CommandExecutionException;
-import com.menmasystems.menmudiscordbot.errorhandlers.CommandExecutionException.ErrorType;
+import com.menmasystems.menmudiscordbot.errorhandler.CommandExecutionException;
+import com.menmasystems.menmudiscordbot.errorhandler.ErrorMessage;
+import com.menmasystems.menmudiscordbot.errorhandler.UserVoiceNotConnectedException;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
 import discord4j.core.object.VoiceState;
 import discord4j.core.object.entity.Member;
@@ -31,16 +33,16 @@ public class JoinCommandHandler implements CommandHandler {
         String channelName = event.getInteraction().getData().channel().get().name().get();
 
         return Mono.justOrEmpty(event.getInteraction().getGuildId())
-                .map(Menmu::getGuildManager)
+                .map(Managers::getGuildManager)
                 .flatMap(guildManager -> Mono.justOrEmpty(event.getInteraction().getMember())
                         .flatMap(Member::getVoiceState)
-                        .switchIfEmpty(Mono.error(new CommandExecutionException("join", ErrorType.USER_VOICE_STATE_NULL)))
+                        .switchIfEmpty(Mono.error(new UserVoiceNotConnectedException()))
                         .flatMap(VoiceState::getChannel)
                         .zipWith(event.getInteraction().getChannel())
                         .flatMap(tuple -> guildManager.joinVoiceChannel(tuple.getT1(), tuple.getT2()))
                         .map(voiceChannel -> String.format(connectedMsg, voiceChannel.getName(), channelName))
                         .flatMap(message -> event.sendSuccessInteractionReply(message, followUp))
-                        .onErrorMap(error -> new CommandExecutionException("join", ErrorType.VOICE_CONNECTION_ERROR, error))
+                        .onErrorMap(UserVoiceNotConnectedException.class, _ -> new CommandExecutionException("join", ErrorMessage.USER_VOICE_STATE_NULL))
                 );
     }
 

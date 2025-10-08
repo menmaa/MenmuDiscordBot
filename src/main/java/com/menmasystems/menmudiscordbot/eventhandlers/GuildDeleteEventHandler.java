@@ -1,6 +1,6 @@
 package com.menmasystems.menmudiscordbot.eventhandlers;
 
-import com.menmasystems.menmudiscordbot.Menmu;
+import com.menmasystems.menmudiscordbot.Managers;
 import discord4j.core.event.domain.guild.GuildDeleteEvent;
 
 import java.util.function.Consumer;
@@ -16,6 +16,6 @@ import java.util.function.Consumer;
 public class GuildDeleteEventHandler implements Consumer<GuildDeleteEvent> {
     @Override
     public void accept(GuildDeleteEvent guildDeleteEvent) {
-        Menmu.removeConnectedGuild(guildDeleteEvent.getGuildId());
+        Managers.removeConnectedGuild(guildDeleteEvent.getGuildId());
     }
 }

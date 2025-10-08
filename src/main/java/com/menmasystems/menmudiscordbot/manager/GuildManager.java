@@ -2,7 +2,7 @@ package com.menmasystems.menmudiscordbot.manager;
 
 import com.menmasystems.menmudiscordbot.MenmuAudioProvider;
 import com.menmasystems.menmudiscordbot.MenmuTrackScheduler;
-import com.menmasystems.menmudiscordbot.errorhandlers.VoiceChannelNotConnected;
+import com.menmasystems.menmudiscordbot.errorhandler.SelfVoiceNotConnectedException;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import discord4j.core.object.entity.Guild;
@@ -35,7 +35,6 @@ public class GuildManager {
     private Message musicQueueMessage;
     private int musicQueuePage;
     private List<AudioTrack> queueOnRepeat;
-    public long devPhaseMessage = 0;
 
     public GuildManager(Guild guild, AudioPlayer audioPlayer, MenmuTrackScheduler trackScheduler) {
         this.setGuild(guild);
@@ -60,7 +59,7 @@ public class GuildManager {
 
     public Mono<Void> leaveVoiceChannel() {
         return Mono.justOrEmpty(getVoiceConnection())
-                .switchIfEmpty(Mono.error(new VoiceChannelNotConnected()))
+                .switchIfEmpty(Mono.error(new SelfVoiceNotConnectedException()))
                 .flatMap(VoiceConnection::disconnect)
                 .doOnSuccess(_ -> {
                     setVoiceConnection(null);

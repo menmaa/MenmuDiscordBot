@@ -1,5 +1,6 @@
 package com.menmasystems.menmudiscordbot.commandhandlers;
 
+import com.menmasystems.menmudiscordbot.Managers;
 import com.menmasystems.menmudiscordbot.Menmu;
 import com.menmasystems.menmudiscordbot.MenmuCommandInteractionEvent;
 import com.menmasystems.menmudiscordbot.MenmuTrackScheduler;
@@ -21,7 +22,7 @@ public class ClearCommandHandler implements CommandHandler {
     @Override
     public Mono<Void> handle(MenmuCommandInteractionEvent event) {
         return Mono.justOrEmpty(event.getInteraction().getGuildId())
-                .map(Menmu::getGuildManager)
+                .map(Managers::getGuildManager)
                 .map(GuildManager::getTrackScheduler)
                 .map(MenmuTrackScheduler::purgeQueue)
                 .then(event.sendSuccessInteractionReply(":white_check_mark: Music queue purged."));

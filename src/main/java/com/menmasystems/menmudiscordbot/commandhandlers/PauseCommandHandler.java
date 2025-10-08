@@ -1,5 +1,6 @@
 package com.menmasystems.menmudiscordbot.commandhandlers;
 
+import com.menmasystems.menmudiscordbot.Managers;
 import com.menmasystems.menmudiscordbot.Menmu;
 import com.menmasystems.menmudiscordbot.MenmuCommandInteractionEvent;
 import com.menmasystems.menmudiscordbot.interfaces.CommandHandler;
@@ -20,7 +21,7 @@ public class PauseCommandHandler implements CommandHandler {
     @Override
     public Mono<Void> handle(MenmuCommandInteractionEvent event) {
         return Mono.justOrEmpty(event.getInteraction().getGuildId())
-                .map(Menmu::getGuildManager)
+                .map(Managers::getGuildManager)
                 .map(GuildManager::getAudioPlayer)
                 .doOnNext(audioPlayer -> audioPlayer.setPaused(!audioPlayer.isPaused()))
                 .flatMap(audioPlayer -> {
