@@ -91,7 +91,7 @@ public class Menmu {
 
         if(ytCipherApiUrl != null) {
             logger.info("Using YouTube Remote Cipher Server at {}", ytCipherApiUrl);
-            options.setRemoteCipherUrl(ytCipherApiUrl, ytCipherApiToken);
+            options.setRemoteCipher(ytCipherApiUrl, ytCipherApiToken, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36");
         } else {
             logger.warn("YT_CIPHER_API_KEY env var is missing. Remote Cipher will not be used. This may break functionality with YouTube.");
         }
