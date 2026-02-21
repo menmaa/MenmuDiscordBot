@@ -1,4 +1,14 @@
 services:
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - VPN_SERVICE_PROVIDER=nordvpn
+      - VPN_TYPE=wireguard
+      - WIREGUARD_PRIVATE_KEY
+    restart: unless-stopped
   ejs-api:
     image: ghcr.io/kikkia/yt-cipher:master
     container_name: ejs-signature-api
@@ -8,6 +18,7 @@ services:
   menmu:
     image: "$IMAGE"
     container_name: "$APP_NAME"
+    network_mode: service:gluetun
     environment:
       - BOT_TOKEN
       - YT_API_KEY
