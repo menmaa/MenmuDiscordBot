@@ -96,7 +96,7 @@ public class Menmu {
             logger.warn("YT_CIPHER_API_KEY env var is missing. Remote Cipher will not be used. This may break functionality with YouTube.");
         }
 
-        YoutubeAudioSourceManager ytAudioSourceManager = new YoutubeAudioSourceManager(options, new Music(), new Web(), new WebEmbedded(), new Tv(), new TvHtml5Embedded());
+        YoutubeAudioSourceManager ytAudioSourceManager = new YoutubeAudioSourceManager(options, new Music(), new Web(), new WebEmbedded(), new Tv(), new TvHtml5Simply());
         ytAudioSourceManager.useOauth2(ytOAuth2RefreshToken, true);
         playerManager.registerSourceManager(ytAudioSourceManager);
         //noinspection deprecation
